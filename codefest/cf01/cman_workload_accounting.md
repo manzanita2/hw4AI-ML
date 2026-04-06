@@ -30,11 +30,13 @@ memory to store all layer inputs and outputs	mem = \#neurons * 4 bytes = 1178 * 
 ##### f)
 $$
 \frac{2*{macs}}{{weights}*4 + neurons * 4}
-= \frac{2*{234752}}{{234752}*4 + 4712 * 4}
+= \frac{2*{234752}}{{234752}*4 + 4712}
 = 0.497503497
 $$
 *in flops/byte*
 
 ## CLLM
+
+see `./profiling`
 
 
