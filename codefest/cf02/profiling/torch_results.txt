@@ -1,0 +1,22 @@
+shape = torch.Size([2, 3, 520, 960]), dtype = torch.float32
+type = <class 'list'>
+length = 12 = number of iterations of the model
+dtype = torch.float32
+shape = torch.Size([2, 2, 520, 960]) = (N, 2, H, W)
+min = -3.9021527767181396, max = 6.40601110458374
+----------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                          Name    Self CPU %      Self CPU   CPU total %     CPU total  CPU time avg       CPU Mem  Self CPU Mem    # of Calls  
+----------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+                                   aten::empty         0.12%       6.272ms         0.12%       6.272ms       4.263us       6.83 GB       6.83 GB          1471  
+                                  aten::conv2d         0.02%       1.089ms        53.25%        2.836s      13.377ms       3.21 GB           0 B           212  
+                             aten::convolution         0.07%       3.725ms        53.23%        2.835s      13.372ms       3.21 GB           0 B           212  
+                            aten::_convolution         0.05%       2.497ms        53.16%        2.831s      13.355ms       3.21 GB           0 B           212  
+                      aten::mkldnn_convolution        53.02%        2.824s        53.11%        2.829s      13.343ms       3.21 GB           0 B           212  
+                                     aten::mul         3.84%     204.366ms         3.86%     205.614ms     922.036us       2.24 GB       2.24 GB           223  
+                                     aten::cat         4.59%     244.609ms         4.63%     246.788ms       1.514ms       2.23 GB       2.23 GB           163  
+                              aten::empty_like         0.00%     183.355us         0.02%       1.125ms      14.423us       1.66 GB           0 B            78  
+                              aten::batch_norm         0.00%     112.980us         3.50%     186.517ms       6.217ms       1.34 GB           0 B            30  
+                  aten::_batch_norm_impl_index         0.01%     310.981us         3.50%     186.404ms       6.213ms       1.34 GB           0 B            30  
+----------------------------------------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  ------------  
+Self CPU time total: 5.326s
+

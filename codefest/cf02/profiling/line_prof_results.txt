@@ -1,0 +1,212 @@
+Iteration 0
+shape = torch.Size([2, 3, 520, 960]), dtype = torch.float32
+type = <class 'list'>
+length = 12 = number of iterations of the model
+dtype = torch.float32
+shape = torch.Size([2, 2, 520, 960]) = (N, 2, H, W)
+min = -3.9021527767181396, max = 6.40601110458374
+Iteration 1
+shape = torch.Size([2, 3, 520, 960]), dtype = torch.float32
+type = <class 'list'>
+length = 12 = number of iterations of the model
+dtype = torch.float32
+shape = torch.Size([2, 2, 520, 960]) = (N, 2, H, W)
+min = -3.9021527767181396, max = 6.40601110458374
+Iteration 2
+shape = torch.Size([2, 3, 520, 960]), dtype = torch.float32
+type = <class 'list'>
+length = 12 = number of iterations of the model
+dtype = torch.float32
+shape = torch.Size([2, 2, 520, 960]) = (N, 2, H, W)
+min = -3.9021527767181396, max = 6.40601110458374
+Iteration 3
+shape = torch.Size([2, 3, 520, 960]), dtype = torch.float32
+type = <class 'list'>
+length = 12 = number of iterations of the model
+dtype = torch.float32
+shape = torch.Size([2, 2, 520, 960]) = (N, 2, H, W)
+min = -3.9021527767181396, max = 6.40601110458374
+Iteration 4
+shape = torch.Size([2, 3, 520, 960]), dtype = torch.float32
+type = <class 'list'>
+length = 12 = number of iterations of the model
+dtype = torch.float32
+shape = torch.Size([2, 2, 520, 960]) = (N, 2, H, W)
+min = -3.9021527767181396, max = 6.40601110458374
+Iteration 5
+shape = torch.Size([2, 3, 520, 960]), dtype = torch.float32
+type = <class 'list'>
+length = 12 = number of iterations of the model
+dtype = torch.float32
+shape = torch.Size([2, 2, 520, 960]) = (N, 2, H, W)
+min = -3.9021527767181396, max = 6.40601110458374
+Iteration 6
+shape = torch.Size([2, 3, 520, 960]), dtype = torch.float32
+type = <class 'list'>
+length = 12 = number of iterations of the model
+dtype = torch.float32
+shape = torch.Size([2, 2, 520, 960]) = (N, 2, H, W)
+min = -3.9021527767181396, max = 6.40601110458374
+Iteration 7
+shape = torch.Size([2, 3, 520, 960]), dtype = torch.float32
+type = <class 'list'>
+length = 12 = number of iterations of the model
+dtype = torch.float32
+shape = torch.Size([2, 2, 520, 960]) = (N, 2, H, W)
+min = -3.9021527767181396, max = 6.40601110458374
+Iteration 8
+shape = torch.Size([2, 3, 520, 960]), dtype = torch.float32
+type = <class 'list'>
+length = 12 = number of iterations of the model
+dtype = torch.float32
+shape = torch.Size([2, 2, 520, 960]) = (N, 2, H, W)
+min = -3.9021527767181396, max = 6.40601110458374
+Iteration 9
+shape = torch.Size([2, 3, 520, 960]), dtype = torch.float32
+type = <class 'list'>
+length = 12 = number of iterations of the model
+dtype = torch.float32
+shape = torch.Size([2, 2, 520, 960]) = (N, 2, H, W)
+min = -3.9021527767181396, max = 6.40601110458374
+Wrote profile results to 'plot_optical_flow.py.lprof'
+Timer unit: 1e-06 s
+
+Total time: 53.5343 s
+File: plot_optical_flow.py
+Function: main at line 77
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    77                                           @profile # NEEDS TO BE COMMENTED OUT FOR TORCH, IN FOR LINE_PROF
+    78                                           def main():
+    79                                               # %%
+    80                                               # We use :class:`~torchcodec.decoders.VideoDecoder` to decode the video frames.
+    81                                               # TorchCodec returns frames in NCHW format by default.
+    82                                               #
+    83                                               # Here we will just make 2 predictions between 2 pre-selected pairs of frames,
+    84                                               # namely frames (100, 101) and (150, 151). Each of these pairs corresponds to a
+    85                                               # single model input.
+    86                                           
+    87        10      88338.1   8833.8      0.2      decoder = VideoDecoder(str(video_path))
+    88        10    7721610.2 772161.0     14.4      frames = decoder[:]
+    89                                           
+    90        10       9205.1    920.5      0.0      img1_batch = torch.stack([frames[100], frames[150]])
+    91        10       7039.2    703.9      0.0      img2_batch = torch.stack([frames[101], frames[151]])
+    92                                           
+    93        10    1250999.5 125100.0      2.3      plot(img1_batch)
+    94                                           
+    95                                               # %%
+    96                                               # The RAFT model accepts RGB images. We first get the frames from
+    97                                               # the decoder and resize them to ensure their dimensions
+    98                                               # are divisible by 8. Note that we explicitly use ``antialias=False``, because
+    99                                               # this is how those models were trained. Then we use the transforms bundled into
+   100                                               # the weights in order to preprocess the input and rescale its values to the
+   101                                               # required ``[-1, 1]`` interval.
+   102                                           
+   103                                           
+   104        10         15.2      1.5      0.0      weights = Raft_Large_Weights.DEFAULT
+   105        10        290.6     29.1      0.0      transforms = weights.transforms()
+   106                                           
+   107                                           
+   108        10          6.9      0.7      0.0      def preprocess(img1_batch, img2_batch):
+   109                                                   img1_batch = F.resize(img1_batch, size=[520, 960], antialias=False)
+   110                                                   img2_batch = F.resize(img2_batch, size=[520, 960], antialias=False)
+   111                                                   return transforms(img1_batch, img2_batch)
+   112                                           
+   113                                           
+   114        10     159441.7  15944.2      0.3      img1_batch, img2_batch = preprocess(img1_batch, img2_batch)
+   115                                           
+   116        10        163.0     16.3      0.0      print(f"shape = {img1_batch.shape}, dtype = {img1_batch.dtype}")
+   117                                           
+   118                                           
+   119                                               # %%
+   120                                               # Estimating Optical flow using RAFT
+   121                                               # ----------------------------------
+   122                                               # We will use our RAFT implementation from
+   123                                               # :func:`~torchvision.models.optical_flow.raft_large`, which follows the same
+   124                                               # architecture as the one described in the `original paper <https://arxiv.org/abs/2003.12039>`_.
+   125                                               # We also provide the :func:`~torchvision.models.optical_flow.raft_small` model
+   126                                               # builder, which is smaller and faster to run, sacrificing a bit of accuracy.
+   127                                           
+   128                                           
+   129                                               # If you can, run this example on a GPU, it will be a lot faster.
+   130        10        228.4     22.8      0.0      device = "cuda" if torch.cuda.is_available() else "cpu"
+   131                                           
+   132        10     785317.8  78531.8      1.5      model = raft_large(weights=Raft_Large_Weights.DEFAULT, progress=False).to(device)
+   133        10      15974.7   1597.5      0.0      model = model.eval()
+   134                                           
+   135        10   41451320.6 4.15e+06     77.4      list_of_flows = model(img1_batch.to(device), img2_batch.to(device))
+   136        10        113.9     11.4      0.0      print(f"type = {type(list_of_flows)}")
+   137        10         33.8      3.4      0.0      print(f"length = {len(list_of_flows)} = number of iterations of the model")
+   138                                           
+   139                                               # %%
+   140                                               # The RAFT model outputs lists of predicted flows where each entry is a
+   141                                               # (N, 2, H, W) batch of predicted flows that corresponds to a given "iteration"
+   142                                               # in the model. For more details on the iterative nature of the model, please
+   143                                               # refer to the `original paper <https://arxiv.org/abs/2003.12039>`_. Here, we
+   144                                               # are only interested in the final predicted flows (they are the most accurate
+   145                                               # ones), so we will just retrieve the last item in the list.
+   146                                               #
+   147                                               # As described above, a flow is a tensor with dimensions (2, H, W) (or (N, 2, H,
+   148                                               # W) for batches of flows) where each entry corresponds to the horizontal and
+   149                                               # vertical displacement of each pixel from the first image to the second image.
+   150                                               # Note that the predicted flows are in "pixel" unit, they are not normalized
+   151                                               # w.r.t. the dimensions of the images.
+   152        10         10.9      1.1      0.0      predicted_flows = list_of_flows[-1]
+   153        10         67.2      6.7      0.0      print(f"dtype = {predicted_flows.dtype}")
+   154        10         86.7      8.7      0.0      print(f"shape = {predicted_flows.shape} = (N, 2, H, W)")
+   155        10       2055.3    205.5      0.0      print(f"min = {predicted_flows.min()}, max = {predicted_flows.max()}")
+   156                                           
+   157                                           
+   158                                               # %%
+   159                                               # Visualizing predicted flows
+   160                                               # ---------------------------
+   161                                               # Torchvision provides the :func:`~torchvision.utils.flow_to_image` utility to
+   162                                               # convert a flow into an RGB image. It also supports batches of flows.
+   163                                               # each "direction" in the flow will be mapped to a given RGB color. In the
+   164                                               # images below, pixels with similar colors are assumed by the model to be moving
+   165                                               # in similar directions. The model is properly able to predict the movement of
+   166                                               # the ball and the player. Note in particular the different predicted direction
+   167                                               # of the ball in the first image (going to the left) and in the second image
+   168                                               # (going up).
+   169                                           
+   170                                           
+   171        10     155197.7  15519.8      0.3      flow_imgs = flow_to_image(predicted_flows)
+   172                                           
+   173                                               # The images have been mapped into [-1, 1] but for plotting we want them in [0, 1]
+   174        10      17978.4   1797.8      0.0      img1_batch = [(img1 + 1) / 2 for img1 in img1_batch]
+   175                                           
+   176        10        443.4     44.3      0.0      grid = [[img1, flow_img] for (img1, flow_img) in zip(img1_batch, flow_imgs)]
+   177        10    1868363.1 186836.3      3.5      plot(grid)
+   178                                               # plt.show()
+   179                                           
+   180                                               # %%
+   181                                               # Bonus: Creating GIFs of predicted flows
+   182                                               # ---------------------------------------
+   183                                               # In the example above we have only shown the predicted flows of 2 pairs of
+   184                                               # frames. A fun way to apply the Optical Flow models is to run the model on an
+   185                                               # entire video, and create a new video from all the predicted flows. Below is a
+   186                                               # snippet that can get you started with this. We comment out the code, because
+   187                                               # this example is being rendered on a machine without a GPU, and it would take
+   188                                               # too long to run it.
+   189                                           
+   190                                               # from torchvision.io import write_jpeg
+   191                                               # for i, (img1, img2) in enumerate(zip(frames, frames[1:])):
+   192                                               #     # Note: it would be faster to predict batches of flows instead of individual flows
+   193                                               #     img1, img2 = preprocess(img1, img2)
+   194                                               #     img1 = torch.unsqueeze(img1, 0)
+   195                                               #     img2 = torch.unsqueeze(img2, 0)
+   196                                               #     print(img1.shape, img2.shape)
+   197                                           
+   198                                               #     list_of_flows = model(img1.to(device), img2.to(device))
+   199                                               #     predicted_flow = list_of_flows[-1][0]
+   200                                               #     flow_img = flow_to_image(predicted_flow).to("cpu")
+   201                                               #     output_folder = "./gifs/"  # Update this to the folder of your choice
+   202                                                   # write_jpeg(flow_img, output_folder + f"predicted_flow_{i}.jpg")
+   203                                           
+   204                                               # %%
+   205                                               # Once the .jpg flow images are saved, you can convert them into a video or a
+   206                                               # GIF using ffmpeg with e.g.:
+   207                                               #
+   208                                               # ffmpeg -f image2 -framerate 30 -i predicted_flow_%d.jpg -loop -1 flow.gif
+
