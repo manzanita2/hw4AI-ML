@@ -23,6 +23,16 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 import torchvision.transforms.functional as F
+import tempfile
+from pathlib import Path
+from urllib.request import urlretrieve
+from torchcodec.decoders import VideoDecoder
+from torchvision.models.optical_flow import Raft_Large_Weights
+from torchvision.models.optical_flow import raft_large
+from torchvision.utils import flow_to_image
+import torch.profiler as profiler
+
+
 
 
 plt.rcParams["savefig.bbox"] = "tight"
@@ -56,14 +66,20 @@ def plot(imgs, **imshow_kwargs):
 # credits go to `Pavel Danilyuk <https://www.pexels.com/@pavel-danilyuk>`_.
 
 
-import tempfile
-from pathlib import Path
-from urllib.request import urlretrieve
+
 
 
 video_url = "https://download.pytorch.org/tutorial/pexelscom_pavel_danilyuk_basketball_hd.mp4"
 video_path = Path(tempfile.mkdtemp()) / "basketball.mp4"
 _ = urlretrieve(video_url, video_path)
+
+profile = profiler.profile(
+    activities=[profiler.ProfilerActivity.CPU, profiler.ProfilerActivity.CUDA],
+    record_shapes=True,
+    profile_memory=True,
+    with_stack=True,
+)
+profile.start()
 
 # %%
 # We use :class:`~torchcodec.decoders.VideoDecoder` to decode the video frames.
@@ -73,7 +89,6 @@ _ = urlretrieve(video_url, video_path)
 # namely frames (100, 101) and (150, 151). Each of these pairs corresponds to a
 # single model input.
 
-from torchcodec.decoders import VideoDecoder
 decoder = VideoDecoder(str(video_path))
 frames = decoder[:]
 
@@ -90,7 +105,6 @@ plot(img1_batch)
 # the weights in order to preprocess the input and rescale its values to the
 # required ``[-1, 1]`` interval.
 
-from torchvision.models.optical_flow import Raft_Large_Weights
 
 weights = Raft_Large_Weights.DEFAULT
 transforms = weights.transforms()
@@ -116,7 +130,6 @@ print(f"shape = {img1_batch.shape}, dtype = {img1_batch.dtype}")
 # We also provide the :func:`~torchvision.models.optical_flow.raft_small` model
 # builder, which is smaller and faster to run, sacrificing a bit of accuracy.
 
-from torchvision.models.optical_flow import raft_large
 
 # If you can, run this example on a GPU, it will be a lot faster.
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -159,7 +172,6 @@ print(f"min = {predicted_flows.min()}, max = {predicted_flows.max()}")
 # of the ball in the first image (going to the left) and in the second image
 # (going up).
 
-from torchvision.utils import flow_to_image
 
 flow_imgs = flow_to_image(predicted_flows)
 
@@ -168,6 +180,7 @@ img1_batch = [(img1 + 1) / 2 for img1 in img1_batch]
 
 grid = [[img1, flow_img] for (img1, flow_img) in zip(img1_batch, flow_imgs)]
 plot(grid)
+# plt.show()
 
 # %%
 # Bonus: Creating GIFs of predicted flows
@@ -179,19 +192,25 @@ plot(grid)
 # this example is being rendered on a machine without a GPU, and it would take
 # too long to run it.
 
-from torchvision.io import write_jpeg
-for i, (img1, img2) in enumerate(zip(frames, frames[1:])):
-    # Note: it would be faster to predict batches of flows instead of individual flows
-    img1, img2 = preprocess(img1, img2)
+# from torchvision.io import write_jpeg
+# for i, (img1, img2) in enumerate(zip(frames, frames[1:])):
+#     # Note: it would be faster to predict batches of flows instead of individual flows
+#     img1, img2 = preprocess(img1, img2)
+#     img1 = torch.unsqueeze(img1, 0)
+#     img2 = torch.unsqueeze(img2, 0)
+#     print(img1.shape, img2.shape)
 
-    list_of_flows = model(img1.to(device), img2.to(device))
-    predicted_flow = list_of_flows[-1][0]
-    flow_img = flow_to_image(predicted_flow).to("cpu")
-    output_folder = "./gifs/"  # Update this to the folder of your choice
-    write_jpeg(flow_img, output_folder + f"predicted_flow_{i}.jpg")
+#     list_of_flows = model(img1.to(device), img2.to(device))
+#     predicted_flow = list_of_flows[-1][0]
+#     flow_img = flow_to_image(predicted_flow).to("cpu")
+#     output_folder = "./gifs/"  # Update this to the folder of your choice
+    # write_jpeg(flow_img, output_folder + f"predicted_flow_{i}.jpg")
 
 # %%
 # Once the .jpg flow images are saved, you can convert them into a video or a
 # GIF using ffmpeg with e.g.:
 #
 # ffmpeg -f image2 -framerate 30 -i predicted_flow_%d.jpg -loop -1 flow.gif
+
+profile.stop()
+print(profile.key_averages().table(sort_by="cpu_memory_usage", row_limit=10))
