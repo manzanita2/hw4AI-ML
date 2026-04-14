@@ -7,7 +7,7 @@ The target kernel for the RAFT optical flow detection model I chose is the Conv2
 as convolutions take up 53% of CPU time and this particular layer operation is repeated many times.
 This kernel has an algorithmic intensity of 144 FLOPs/byte.
 On my hardware (ridge point = ~11 FLOPs/byte), this puts the target kernel well into the compute-bound region by an order of magnitude.
-This presents great opportunity for performance gains with more specialized compute for this task, from 35 GFLOPs/sec to around 1 TFLOP/sec, roughly several orders of magnitude.
+This presents great opportunity for performance gains with more specialized compute for this task, from 380 GFLOPs/sec to around 1 TFLOP/sec, around a 3x improvement.
 
 ### b)
 I do not plan on accelerating any other part of the algorithm other than this kernel.
