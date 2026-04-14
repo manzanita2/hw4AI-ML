@@ -106,6 +106,7 @@ my cpu is an AMD Ryzen 9 7940HS.
 according to https://www.cpu-monkey.com/en/cpu-amd_ryzen_9_7940hs
 the maximum memory throughput is 89.5GB/s at ddr5-5600
 
+
 ## Peak FLOP/s Research (Ryzen 9 7940HS)
 
 There is no single official AMD "FLOP/s" value published for this CPU, so I used vendor specs plus a standard theoretical-throughput calculation.
