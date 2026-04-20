@@ -1,0 +1,7 @@
+CUDA available: True
+Using GPU: AMD Radeon™ RX 7700S
+Device: cuda
+Input shape: torch.Size([16, 4])
+Output shape: torch.Size([16, 1])
+Output device: cuda:0
+
