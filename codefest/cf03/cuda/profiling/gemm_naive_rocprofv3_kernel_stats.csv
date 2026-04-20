@@ -1,0 +1,2 @@
+"Name","Calls","TotalDurationNs","AverageNs","Percentage","MinNs","MaxNs","StdDev"
+"(anonymous namespace)::gemm_naive_kernel(float const*, float const*, float*)",1,2464411,2464411.000000,100.00,2464411,2464411,0.00000000e+00

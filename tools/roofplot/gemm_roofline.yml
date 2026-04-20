@@ -1,0 +1,25 @@
+hardware:
+  peak_compute_gflops: 20480 # AMD Radeon™ RX 7700S has 20.48 TFLOPS
+  peak_bandwidth_name: "VRAM"
+  peak_bandwidth_gbs: 288
+  secondary_bandwidth:
+    name: "L2 cache"
+    peak_bandwidth_gbs: 1200
+
+plot:
+  title: "Example GPU Roofline"
+  output: "example_roofline.png"
+  ai_min: 0.1
+  ai_max: 200
+
+points:
+  - name: "gemm_naive"
+    ai_flops_per_byte: 0.25
+    performance_gflops: 871.4
+    color: "tab:red"
+    marker: "o"
+  - name: "gemm_tiled"
+    ai_flops_per_byte: 1.99
+    performance_gflops: 933.3
+    color: "tab:blue"
+    marker: "s"
