@@ -7,8 +7,8 @@ hardware:
     peak_bandwidth_gbs: 1200
 
 plot:
-  title: "Example GPU Roofline"
-  output: "example_roofline.png"
+  title: "GPU Roofline"
+  output: "gemm_roofline.png"
   ai_min: 0.1
   ai_max: 200
 
