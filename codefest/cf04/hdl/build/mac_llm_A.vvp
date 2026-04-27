@@ -1,0 +1,62 @@
+#! /usr/local/bin/vvp
+:ivl_version "14.0 (devel)" "(s20251012-145-g9b0d46b4b)";
+:ivl_delay_selection "TYPICAL";
+:vpi_time_precision + 0;
+:vpi_module "/usr/local/lib/ivl/system.vpi";
+:vpi_module "/usr/local/lib/ivl/vhdl_sys.vpi";
+:vpi_module "/usr/local/lib/ivl/vhdl_textio.vpi";
+:vpi_module "/usr/local/lib/ivl/v2005_math.vpi";
+:vpi_module "/usr/local/lib/ivl/va_math.vpi";
+:vpi_module "/usr/local/lib/ivl/v2009.vpi";
+S_0x3a3b98e0 .scope package, "$unit" "$unit" 2 1;
+ .timescale 0 0;
+S_0x3a3b9a70 .scope module, "mac" "mac" 3 1;
+ .timescale 0 0;
+    .port_info 0 /INPUT 1 "clk";
+    .port_info 1 /INPUT 1 "rst";
+    .port_info 2 /INPUT 8 "a";
+    .port_info 3 /INPUT 8 "b";
+    .port_info 4 /OUTPUT 32 "out";
+v0x3a3b9cb0_0 .net/s *"_ivl_0", 15 0, L_0x3a3f0490;  1 drivers
+v0x3a3efdb0_0 .net/s *"_ivl_2", 15 0, L_0x3a3f0560;  1 drivers
+o0x7fa99fcd0078 .functor BUFZ 8, c4<zzzzzzzz>; HiZ drive
+v0x3a3efe90_0 .net/s "a", 7 0, o0x7fa99fcd0078;  0 drivers
+o0x7fa99fcd00a8 .functor BUFZ 8, c4<zzzzzzzz>; HiZ drive
+v0x3a3eff80_0 .net/s "b", 7 0, o0x7fa99fcd00a8;  0 drivers
+o0x7fa99fcd00d8 .functor BUFZ 1, c4<z>; HiZ drive
+v0x3a3f0060_0 .net "clk", 0 0, o0x7fa99fcd00d8;  0 drivers
+v0x3a3f0170_0 .var/s "out", 31 0;
+v0x3a3f0250_0 .net/s "product", 15 0, L_0x3a3f0660;  1 drivers
+o0x7fa99fcd0168 .functor BUFZ 1, c4<z>; HiZ drive
+v0x3a3f0330_0 .net "rst", 0 0, o0x7fa99fcd0168;  0 drivers
+E_0x3a3df3e0 .event posedge, v0x3a3f0060_0;
+L_0x3a3f0490 .extend/s 16, o0x7fa99fcd0078;
+L_0x3a3f0560 .extend/s 16, o0x7fa99fcd00a8;
+L_0x3a3f0660 .arith/mult 16, L_0x3a3f0490, L_0x3a3f0560;
+    .scope S_0x3a3b9a70;
+T_0 ;
+    %wait E_0x3a3df3e0;
+    %load/vec4 v0x3a3f0330_0;
+    %flag_set/vec4 8;
+    %jmp/0xz  T_0.0, 8;
+    %pushi/vec4 0, 0, 32;
+    %assign/vec4 v0x3a3f0170_0, 0;
+    %jmp T_0.1;
+T_0.0 ;
+    %load/vec4 v0x3a3f0170_0;
+    %load/vec4 v0x3a3f0250_0;
+    %parti/s 1, 15, 5;
+    %replicate 16;
+    %load/vec4 v0x3a3f0250_0;
+    %concat/vec4; draw_concat_vec4
+    %add;
+    %assign/vec4 v0x3a3f0170_0, 0;
+T_0.1 ;
+    %jmp T_0;
+    .thread T_0;
+# The file index is used to find the file name in the following table.
+:file_names 4;
+    "N/A";
+    "<interactive>";
+    "-";
+    "/home/hx3d/opt/hw4AI-ML/codefest/cf04/hdl/mac_llm_A.v";
