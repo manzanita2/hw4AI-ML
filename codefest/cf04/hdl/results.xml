@@ -1,6 +1,6 @@
 <testsuites name="results">
   <testsuite name="all" package="all">
-    <property name="random_seed" value="1777257283" />
-    <testcase name="mac_basic_sequence" classname="mac_tb" file="/home/hx3d/opt/hw4AI-ML/codefest/cf04/hdl/mac_tb.py" lineno="43" time="0.0027234554290771484" sim_time_ns="61.0" ratio_time="22398.01663310864" />
+    <property name="random_seed" value="1777261000" />
+    <testcase name="mac_basic_sequence" classname="mac_tb" file="/home/hx3d/opt/hw4AI-ML/codefest/cf04/hdl/mac_tb.py" lineno="43" time="0.0011708736419677734" sim_time_ns="61.0" ratio_time="52097.850539604966" />
   </testsuite>
 </testsuites>

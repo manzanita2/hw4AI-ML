@@ -1,0 +1,167 @@
+
+ /----------------------------------------------------------------------------\
+ |  yosys -- Yosys Open SYnthesis Suite                                       |
+ |  Copyright (C) 2012 - 2026  Claire Xenia Wolf <claire@yosyshq.com>         |
+ |  Distributed under an ISC-like license, type "license" to see terms        |
+ \----------------------------------------------------------------------------/
+ Yosys 0.63 (git sha1 3bc26ff4d055adfbba8b424508ab4a36405ffc0b, g++ 15.2.1 -O2 -flto=auto -ffat-lto-objects -fexceptions -fstack-protector-strong -m64 -march=x86-64 -mtune=generic -fasynchronous-unwind-tables -fstack-clash-protection -fcf-protection -mtls-dialect=gnu2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -fPIC -O3)
+
+-- Running command `read_verilog -sv mac_llm_B.v; hierarchy -check -top mac; proc; opt; check; stat; write_rtlil synth_build/synth_B.rtlil; write_verilog synth_build/synth_B.v' --
+
+1. Executing Verilog-2005 frontend: mac_llm_B.v
+Parsing SystemVerilog input from `mac_llm_B.v' to AST representation.
+Generating RTLIL representation for module `\mac'.
+Successfully finished Verilog frontend.
+
+2. Executing HIERARCHY pass (managing design hierarchy).
+
+2.1. Analyzing design hierarchy..
+Top module:  \mac
+
+2.2. Analyzing design hierarchy..
+Top module:  \mac
+Removed 0 unused modules.
+
+3. Executing PROC pass (convert processes to netlists).
+
+3.1. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Cleaned up 0 empty switches.
+
+3.2. Executing PROC_RMDEAD pass (remove dead branches from decision trees).
+Marked 1 switch rules as full_case in process $proc$mac_llm_B.v:17$2 in module mac.
+Removed a total of 0 dead cases.
+
+3.3. Executing PROC_PRUNE pass (remove redundant assignments in processes).
+Removed 1 redundant assignment.
+Promoted 0 assignments to connections.
+
+3.4. Executing PROC_INIT pass (extract init attributes).
+
+3.5. Executing PROC_ARST pass (detect async resets in processes).
+
+3.6. Executing PROC_ROM pass (convert switches to ROMs).
+Converted 0 switches.
+<suppressed ~1 debug messages>
+
+3.7. Executing PROC_MUX pass (convert decision trees to multiplexers).
+Creating decoders for process `\mac.$proc$mac_llm_B.v:17$2'.
+     1/1: $0\out[31:0]
+
+3.8. Executing PROC_DLATCH pass (convert process syncs to latches).
+
+3.9. Executing PROC_DFF pass (convert process syncs to FFs).
+Creating register for signal `\mac.\out' using process `\mac.$proc$mac_llm_B.v:17$2'.
+  created $dff cell `$procdff$7' with positive edge clock.
+
+3.10. Executing PROC_MEMWR pass (convert process memory writes to cells).
+
+3.11. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Found and cleaned up 1 empty switch in `\mac.$proc$mac_llm_B.v:17$2'.
+Removing empty process `mac.$proc$mac_llm_B.v:17$2'.
+Cleaned up 1 empty switch.
+
+3.12. Executing OPT_EXPR pass (perform const folding).
+Optimizing module mac.
+
+4. Executing OPT pass (performing simple optimizations).
+
+4.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module mac.
+
+4.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\mac'.
+Computing hashes of 4 cells of `\mac'.
+Finding duplicate cells in `\mac'.
+Removed a total of 0 cells.
+
+4.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \mac..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Removed 0 multiplexer ports.
+<suppressed ~2 debug messages>
+
+4.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \mac.
+Performed a total of 0 changes.
+
+4.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\mac'.
+Computing hashes of 4 cells of `\mac'.
+Finding duplicate cells in `\mac'.
+Removed a total of 0 cells.
+
+4.6. Executing OPT_DFF pass (perform DFF optimizations).
+Adding SRST signal on $procdff$7 ($dff) from module mac (D = $add$mac_llm_B.v:21$3_Y, Q = \out, rval = 0).
+
+4.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \mac..
+Removed 1 unused cells and 4 unused wires.
+<suppressed ~2 debug messages>
+
+4.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module mac.
+
+4.9. Rerunning OPT passes. (Maybe there is more to do..)
+
+4.10. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \mac..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+
+4.11. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \mac.
+Performed a total of 0 changes.
+
+4.12. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\mac'.
+Computing hashes of 3 cells of `\mac'.
+Finding duplicate cells in `\mac'.
+Removed a total of 0 cells.
+
+4.13. Executing OPT_DFF pass (perform DFF optimizations).
+
+4.14. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \mac..
+
+4.15. Executing OPT_EXPR pass (perform const folding).
+Optimizing module mac.
+
+4.16. Finished fast OPT passes. (There is nothing left to do.)
+
+5. Executing CHECK pass (checking for obvious problems).
+Checking module mac...
+Found and reported 0 problems.
+
+6. Printing statistics.
+
+=== mac ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        7 wires
+       98 wire bits
+        6 public wires
+       66 public wire bits
+        5 ports
+       50 port bits
+        3 cells
+        1   $add
+        1   $mul
+        1   $sdff
+
+7. Executing RTLIL backend.
+Output filename: synth_build/synth_B.rtlil
+
+8. Executing Verilog backend.
+
+8.1. Executing BMUXMAP pass.
+
+8.2. Executing DEMUXMAP pass.
+Dumping module `\mac'.
+
+End of script. Logfile hash: dcd2115523, CPU: user 0.01s system 0.01s, MEM: 14.30 MB peak
+Yosys 0.63 (git sha1 3bc26ff4d055adfbba8b424508ab4a36405ffc0b, g++ 15.2.1 -O2 -flto=auto -ffat-lto-objects -fexceptions -fstack-protector-strong -m64 -march=x86-64 -mtune=generic -fasynchronous-unwind-tables -fstack-clash-protection -fcf-protection -mtls-dialect=gnu2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -fPIC -O3)
+Time spent: 24% 4x opt_expr (0 sec), 14% 3x opt_merge (0 sec), ...

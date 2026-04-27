@@ -11,8 +11,16 @@
 #   make                # default: DUT=B  (mac_llm_B.v)
 #   make DUT=A          # mac_llm_A.v
 #   make DUT=correct    # mac_correct.v
-#   make clean
-#   make distclean      # also nuke __pycache__
+#
+# Yosys synthesis (one target per LLM):
+#   make synth-A        # synthesize mac_llm_A.v
+#   make synth-B        # synthesize mac_llm_B.v
+#   make synth-correct  # synthesize mac_correct.v
+#   make synth          # synthesize whatever DUT= selects (default B)
+# Outputs land in synth_build/synth_<DUT>.{log,v,rtlil}.
+#
+#   make clean          # remove cocotb sim_build/
+#   make distclean      # also nuke __pycache__ and synth_build/
 #
 # Override the venv location if needed:
 #   make VENV=/path/to/.venv-cocotb
@@ -63,7 +71,50 @@ export PYTHONPATH := $(CURDIR):$(PYTHONPATH)
 # This defines the default target (`sim`) plus `clean`.
 include $(shell $(VENV_BIN)/cocotb-config --makefiles)/Makefile.sim
 
+# ----------------------------------------------------------------------
+# Yosys synthesis targets.
+#
+# We deliberately re-invoke `$(MAKE) synth DUT=<X>` from each per-LLM
+# convenience target instead of duplicating the yosys recipe three times.
+# That keeps the DUT->VERILOG_SOURCES mapping above as the single source
+# of truth for which file goes with which LLM.
+#
+# `read_verilog -sv` is required: the SV literal `'0`, `logic`, and
+# `always_ff` are all SystemVerilog and the default Verilog frontend
+# rejects them.
+# ----------------------------------------------------------------------
+YOSYS       ?= yosys
+SYNTH_BUILD := synth_build
+SYNTH_LOG    = $(SYNTH_BUILD)/synth_$(DUT).log
+SYNTH_NETLIST = $(SYNTH_BUILD)/synth_$(DUT).v
+SYNTH_RTLIL   = $(SYNTH_BUILD)/synth_$(DUT).rtlil
+
+# Use `=` (recursive) so $(VERILOG_SOURCES) etc. resolve at use time --
+# this matters because `synth-A` re-makes with DUT=A, which changes them.
+YOSYS_SCRIPT = read_verilog -sv $(VERILOG_SOURCES); \
+               hierarchy -check -top $(TOPLEVEL); \
+               proc; opt; check; stat; \
+               write_rtlil $(SYNTH_RTLIL); \
+               write_verilog $(SYNTH_NETLIST)
+
+.PHONY: synth synth-A synth-B synth-correct
+
+$(SYNTH_BUILD):
+	mkdir -p $@
+
+synth: | $(SYNTH_BUILD)
+	$(YOSYS) -l $(SYNTH_LOG) -p "$(YOSYS_SCRIPT)"
+
+synth-A:
+	$(MAKE) synth DUT=A
+
+synth-B:
+	$(MAKE) synth DUT=B
+
+synth-correct:
+	$(MAKE) synth DUT=correct
+
 # Extra cleanup beyond what cocotb's `clean` removes.
 .PHONY: distclean
 distclean: clean
-	rm -rf __pycache__ results.xml
+	rm -rf __pycache__ results.xml $(SYNTH_BUILD)
