@@ -1,0 +1,42 @@
+make[1]: Entering directory '/home/hx3d/opt/hw4AI-ML/codefest/cf04/cocotb_mac'
+rm -f results.xml
+"make" -f Makefile results.xml
+make[2]: Entering directory '/home/hx3d/opt/hw4AI-ML/codefest/cf04/cocotb_mac'
+rm -f results.xml
+COCOTB_TEST_MODULES=mac_tb COCOTB_TESTCASE= COCOTB_TEST_FILTER= COCOTB_TOPLEVEL=mac TOPLEVEL_LANG=verilog \
+         /usr/local/sbin/vvp -M /home/hx3d/opt/hw4AI-ML/.venv-cocotb/lib/python3.11/site-packages/cocotb/libs -m libcocotbvpi_icarus   sim_build/sim.vvp   
+     -.--ns INFO     gpi                                ..mbed/gpi_embed.cpp:93   in _embed_init_python              Using Python 3.11.9 interpreter at /home/hx3d/opt/hw4AI-ML/.venv-cocotb/bin/python
+     -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:79   in gpi_print_registered_impl       VPI registered
+     0.00ns INFO     cocotb                             Running on Icarus Verilog version 14.0 (devel)
+     0.00ns INFO     cocotb                             Seeding Python random module with 1777268482
+     0.00ns INFO     cocotb                             Initialized cocotb v2.0.1 from /home/hx3d/opt/hw4AI-ML/.venv-cocotb/lib64/python3.11/site-packages/cocotb
+     0.00ns INFO     cocotb.regression                  pytest not found, install it to enable better AssertionError messages
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running mac_tb.mac_basic_sequence (1/2)
+                                                            Apply the spec stimulus and check the accumulator after each posedge.
+    11.00ns INFO     cocotb.mac                         phase1.c0      out =     12  (expected 12)
+    21.00ns INFO     cocotb.mac                         phase1.c1      out =     24  (expected 24)
+    31.00ns INFO     cocotb.mac                         phase1.c2      out =     36  (expected 36)
+    41.00ns INFO     cocotb.mac                         reset          out =      0  (expected 0)
+    51.00ns INFO     cocotb.mac                         phase3.c0      out =    -10  (expected -10)
+    61.00ns INFO     cocotb.mac                         phase3.c1      out =    -20  (expected -20)
+    61.00ns INFO     cocotb.mac                         MAC stimulus sequence passed.
+    61.00ns INFO     cocotb.regression                  mac_tb.mac_basic_sequence passed
+    61.00ns INFO     cocotb.regression                  running mac_tb.test_mac_overflow (2/2)
+                                                            Push the accumulator past 2**31 - 1 to observe wrap vs saturation.
+1310782.00ns INFO     cocotb.mac                         cycle 131071: out =   2147467264  (expected 2147467264)
+1310792.00ns INFO     cocotb.mac                         cycle 131072: out =  -2147483648  (boundary)
+1310802.00ns INFO     cocotb.mac                         cycle 131073: out =  -2147467264  (post-boundary)
+1310802.00ns WARNING  cocotb.mac                         DESIGN WRAPS: 2's-complement overflow.  out[N]=-2147483648, out[N+1]=-2147467264.
+1310802.00ns INFO     cocotb.regression                  mac_tb.test_mac_overflow passed
+1310802.00ns INFO     cocotb.regression                  **************************************************************************************
+                                                         ** TEST                          STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+                                                         **************************************************************************************
+                                                         ** mac_tb.mac_basic_sequence      PASS          61.00           0.00      19393.05  **
+                                                         ** mac_tb.test_mac_overflow       PASS     1310741.00           3.73     351325.46  **
+                                                         **************************************************************************************
+                                                         ** TESTS=2 PASS=2 FAIL=0 SKIP=0            1310802.00           3.74     350725.66  **
+                                                         **************************************************************************************
+VCD info: dumpfile artifacts/mac.vcd opened for output.
+make[2]: Leaving directory '/home/hx3d/opt/hw4AI-ML/codefest/cf04/cocotb_mac'
+make[1]: Leaving directory '/home/hx3d/opt/hw4AI-ML/codefest/cf04/cocotb_mac'

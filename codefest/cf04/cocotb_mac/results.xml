@@ -1,0 +1,7 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1777268482" />
+    <testcase name="mac_basic_sequence" classname="mac_tb" file="/home/hx3d/opt/hw4AI-ML/codefest/cf04/cocotb_mac/mac_tb.py" lineno="43" time="0.003145456314086914" sim_time_ns="61.0" ratio_time="19393.052679451223" />
+    <testcase name="test_mac_overflow" classname="mac_tb" file="/home/hx3d/opt/hw4AI-ML/codefest/cf04/cocotb_mac/mac_tb.py" lineno="99" time="3.7308454513549805" sim_time_ns="1310741.0" ratio_time="351325.4615047002" />
+  </testsuite>
+</testsuites>
