@@ -1,0 +1,102 @@
+rm -f results.xml
+"make" -f Makefile results.xml
+mkdir -p sim_build
+/usr/local/sbin/iverilog -o sim_build/sim.vvp -s interface_module -g2012 -g2012 -s dump_vcd -f sim_build/cmds.f  /home/hx3d/opt/hw4AI-ML/project/m2/rtl/acc_fp32.sv /home/hx3d/opt/hw4AI-ML/project/m2/rtl/compute_core.sv /home/hx3d/opt/hw4AI-ML/project/m2/rtl/interface.sv /home/hx3d/opt/hw4AI-ML/project/m2/rtl/mul_bf16.sv /home/hx3d/opt/hw4AI-ML/project/m2/rtl/pe.sv artifacts/dump_vcd.v
+rm -f results.xml
+COCOTB_TEST_MODULES=tb_interface COCOTB_TESTCASE= COCOTB_TEST_FILTER= COCOTB_TOPLEVEL=interface_module TOPLEVEL_LANG=verilog \
+         /usr/local/sbin/vvp -M /home/hx3d/opt/hw4AI-ML/.venv-cocotb/lib/python3.11/site-packages/cocotb/libs -m libcocotbvpi_icarus   sim_build/sim.vvp   
+     -.--ns INFO     gpi                                ..mbed/gpi_embed.cpp:93   in _embed_init_python              Using Python 3.11.9 interpreter at /home/hx3d/opt/hw4AI-ML/.venv-cocotb/bin/python
+     -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:79   in gpi_print_registered_impl       VPI registered
+     0.00ns INFO     cocotb                             Running on Icarus Verilog version 14.0 (devel)
+     0.00ns INFO     cocotb                             Seeding Python random module with 1777870518
+     0.00ns INFO     cocotb                             Initialized cocotb v2.0.1 from /home/hx3d/opt/hw4AI-ML/.venv-cocotb/lib64/python3.11/site-packages/cocotb
+     0.00ns INFO     cocotb.regression                  pytest not found, install it to enable better AssertionError messages
+     0.00ns INFO     cocotb                             Running tests
+     0.00ns INFO     cocotb.regression                  running tb_interface.tb_interface_smoke (1/9)
+                                                            Reset; verify both AXI-Lite FSMs idle and all outputs are sane.
+    31.00ns INFO     cocotb.interface_module              OK   s_axil_awready     = 1  (expect 1)
+    31.00ns INFO     cocotb.interface_module              OK   s_axil_wready      = 1  (expect 1)
+    31.00ns INFO     cocotb.interface_module              OK   s_axil_bvalid      = 0  (expect 0)
+    31.00ns INFO     cocotb.interface_module              OK   s_axil_arready     = 1  (expect 1)
+    31.00ns INFO     cocotb.interface_module              OK   s_axil_rvalid      = 0  (expect 0)
+    31.00ns INFO     cocotb.interface_module              OK   m_axis_tvalid      = 0  (expect 0)
+    31.00ns INFO     cocotb.interface_module              OK   m_axis_tlast       = 0  (expect 0)
+    31.00ns INFO     cocotb.interface_module              OK   cfg_start          = 0  (expect 0)
+    31.00ns INFO     cocotb.interface_module              OK   s_axis_tready      = 0  (expect 0)
+    31.00ns INFO     cocotb.interface_module              OK   w_state            = 0  (expect 0)
+    31.00ns INFO     cocotb.interface_module              OK   r_state            = 0  (expect 0)
+    31.00ns INFO     cocotb.interface_module            PASS: interface_module smoke (reset + idle outputs)
+    31.00ns INFO     cocotb.regression                  tb_interface.tb_interface_smoke passed
+    31.00ns INFO     cocotb.regression                  running tb_interface.tb_axil_scratch_loopback (2/9)
+                                                            Complete write + read transaction: write 0xDEADBEEF to SCRATCH,
+    91.00ns INFO     cocotb.interface_module              OK   write SCRATCH = 0xDEADBEEF, bresp = 0x0
+   111.00ns INFO     cocotb.interface_module              OK   read  SCRATCH = 0xDEADBEEF, rresp = 0x0
+   111.00ns INFO     cocotb.interface_module            PASS: SCRATCH loopback (write + read transaction)
+   111.00ns INFO     cocotb.regression                  tb_interface.tb_axil_scratch_loopback passed
+   111.00ns INFO     cocotb.regression                  running tb_interface.tb_axil_ctrl_start_pulse (3/9)
+                                                            A write of CTRL.START = 1 must drive cfg_start high for exactly
+   312.00ns INFO     cocotb.interface_module              cfg_start observed high in 1 cycle(s) of 16
+   312.00ns INFO     cocotb.interface_module            PASS: CTRL.START -> cfg_start pulses for exactly 1 cycle
+   312.00ns INFO     cocotb.regression                  tb_interface.tb_axil_ctrl_start_pulse passed
+   312.00ns INFO     cocotb.regression                  running tb_interface.tb_axil_status_bits (4/9)
+                                                            STATUS bit 0 mirrors status_busy combinationally; bit 1 latches
+   382.00ns INFO     cocotb.interface_module              phase 1: STATUS = 0x00000001  (BUSY=1, DONE=0)
+   412.00ns INFO     cocotb.interface_module              phase 2: STATUS = 0x00000002  (BUSY=0, DONE=1)
+   442.00ns INFO     cocotb.interface_module              phase 3: STATUS = 0x00000003  (BUSY=1, DONE=1)
+   442.00ns INFO     cocotb.interface_module            PASS: STATUS.BUSY combinational, STATUS.DONE sticky
+   442.00ns INFO     cocotb.regression                  tb_interface.tb_axil_status_bits passed
+   442.00ns INFO     cocotb.regression                  running tb_interface.tb_axil_done_latch_clear (5/9)
+                                                            Set DONE via a status_done pulse, verify it's latched, then write
+   512.00ns INFO     cocotb.interface_module              before clear: STATUS.DONE = 1  (expect 1)
+   552.00ns INFO     cocotb.interface_module              after  clear: STATUS.DONE = 0  (expect 0)
+   552.00ns INFO     cocotb.interface_module            PASS: CTRL.START write clears sticky DONE
+   552.00ns INFO     cocotb.regression                  tb_interface.tb_axil_done_latch_clear passed
+   552.00ns INFO     cocotb.regression                  running tb_interface.tb_axil_unimplemented_addr (6/9)
+                                                            Unimplemented address (0x08) must return OKAY for both write and
+   612.00ns INFO     cocotb.interface_module              write @ 0x08: bresp = 0x0  (expect OKAY=0x0)
+   632.00ns INFO     cocotb.interface_module              read  @ 0x08: rdata = 0x00000000, rresp = 0x0
+   652.00ns INFO     cocotb.interface_module              SCRATCH after unimpl write = 0x00000000  (expect 0x0)
+   652.00ns INFO     cocotb.interface_module            PASS: unimplemented address returns OKAY/0, no regfile leak
+   652.00ns INFO     cocotb.regression                  tb_interface.tb_axil_unimplemented_addr passed
+   652.00ns INFO     cocotb.regression                  running tb_interface.tb_axil_wstrb (7/9)
+                                                            Preload SCRATCH = 0xFFFFFFFF, then write 0x12345678 with wstrb =
+   732.01ns INFO     cocotb.interface_module              preload: SCRATCH = 0xFFFFFFFF  (expect 0xFFFFFFFF)
+   772.01ns INFO     cocotb.interface_module              after partial write (wstrb=0b0011): SCRATCH = 0xFFFF5678  (expect 0xFFFF5678)
+   772.01ns INFO     cocotb.interface_module            PASS: per-byte wstrb mask honored on SCRATCH
+   772.01ns INFO     cocotb.regression                  tb_interface.tb_axil_wstrb passed
+   772.01ns INFO     cocotb.regression                  running tb_interface.tb_axis_ingress_passthrough (8/9)
+                                                            Drive s_axis_t* + act_ready; verify act_data / act_valid /
+   814.01ns INFO     cocotb.interface_module              OK   act_data       = 0xDEADBEEFCAFEBABEDEADBEEFCAFEBABEDEADBEEFCAFEBABEDEADBEEFCAFEBABE  (expect 0xDEADBEEFCAFEBABEDEADBEEFCAFEBABEDEADBEEFCAFEBABEDEADBEEFCAFEBABE)
+   814.01ns INFO     cocotb.interface_module              OK   act_valid      = 1  (expect 1)
+   814.01ns INFO     cocotb.interface_module              OK   act_last       = 1  (expect 1)
+   814.01ns INFO     cocotb.interface_module              OK   s_axis_tready  = 1  (expect 1)
+   823.01ns INFO     cocotb.interface_module              OK   ingress pass-through stable across clock edge
+   824.01ns INFO     cocotb.interface_module              OK   s_axis_tready follows act_ready -> 0 (backpressure)
+   824.01ns INFO     cocotb.interface_module            PASS: AXIS ingress combinational pass-through
+   824.01ns INFO     cocotb.regression                  tb_interface.tb_axis_ingress_passthrough passed
+   824.01ns INFO     cocotb.regression                  running tb_interface.tb_axis_egress_passthrough (9/9)
+                                                            Mirror of test 8 with the data direction reversed: drive res_* +
+   866.01ns INFO     cocotb.interface_module              OK   m_axis_tdata   = 0x0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF  (expect 0x0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF)
+   866.01ns INFO     cocotb.interface_module              OK   m_axis_tvalid  = 1  (expect 1)
+   866.01ns INFO     cocotb.interface_module              OK   m_axis_tlast   = 1  (expect 1)
+   866.01ns INFO     cocotb.interface_module              OK   res_ready      = 1  (expect 1)
+   875.01ns INFO     cocotb.interface_module              OK   egress pass-through stable across clock edge
+   876.01ns INFO     cocotb.interface_module              OK   res_ready follows m_axis_tready -> 0 (backpressure)
+   876.01ns INFO     cocotb.interface_module            PASS: AXIS egress combinational pass-through
+   876.01ns INFO     cocotb.regression                  tb_interface.tb_axis_egress_passthrough passed
+   876.01ns INFO     cocotb.regression                  **************************************************************************************************
+                                                        ** TEST                                      STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
+                                                        **************************************************************************************************
+                                                        ** tb_interface.tb_interface_smoke            PASS          31.00           0.00      11037.64  **
+                                                        ** tb_interface.tb_axil_scratch_loopback      PASS          80.00           0.00      74284.77  **
+                                                        ** tb_interface.tb_axil_ctrl_start_pulse      PASS         201.00           0.00     152368.53  **
+                                                        ** tb_interface.tb_axil_status_bits           PASS         130.00           0.00     110960.42  **
+                                                        ** tb_interface.tb_axil_done_latch_clear      PASS         110.00           0.00     107521.19  **
+                                                        ** tb_interface.tb_axil_unimplemented_addr    PASS         100.00           0.00     102350.02  **
+                                                        ** tb_interface.tb_axil_wstrb                 PASS         120.00           0.00     106207.32  **
+                                                        ** tb_interface.tb_axis_ingress_passthrough   PASS          52.00           0.00      63624.21  **
+                                                        ** tb_interface.tb_axis_egress_passthrough    PASS          52.00           0.00      63347.03  **
+                                                        **************************************************************************************************
+                                                        ** TESTS=9 PASS=9 FAIL=0 SKIP=0                            876.01           0.02      42921.91  **
+                                                        **************************************************************************************************
+VCD info: dumpfile artifacts/interface.vcd opened for output.

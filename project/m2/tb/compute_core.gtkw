@@ -1,0 +1,56 @@
+[*]
+[*] GTKWave Analyzer save file for compute_core M2 deliverable waveform.
+[*] Loads compute_core.vcd with the FSM + handshake + datapath signals
+[*] pre-arranged in the order specified by project/m2/sim/README.md.
+[*]
+[*] Lives in project/m2/tb/ (NOT under artifacts/) so `make clean` does
+[*] not delete it. The dumpfile path is relative to the cwd you launch
+[*] gtkwave from -- the README.md walkthrough has you `cd project/m2/tb`
+[*] first, which makes `artifacts/compute_core.vcd` resolve correctly.
+[*]
+[dumpfile] "artifacts/compute_core.vcd"
+[savefile] "compute_core.gtkw"
+[timestart] 0
+[size] 1600 900
+[pos] -1 -1
+*-13.000000 200000 -1 -1 -1 -1 -1 -1
+[treeopen] compute_core.
+[sst_width] 240
+[signals_width] 240
+[sst_expanded] 1
+[sst_vpaned_height] 200
+@200
+-FSM
+@28
+compute_core.clk
+compute_core.rst
+compute_core.cfg_start
+@22
+compute_core.state[1:0]
+compute_core.wt_count[4:0]
+compute_core.compute_cycle[3:0]
+compute_core.drain_cycle[2:0]
+@200
+-Activation/Weight stream in
+@28
+compute_core.act_valid
+compute_core.act_ready
+compute_core.act_last
+@22
+compute_core.act_data[255:0]
+@200
+-Result stream out
+@28
+compute_core.res_valid
+compute_core.res_ready
+compute_core.res_last
+@22
+compute_core.res_data[255:0]
+compute_core.drain_word[15:0]
+@200
+-Status
+@28
+compute_core.status_busy
+compute_core.status_done
+[pattern_trace] 1
+[pattern_trace] 0

@@ -1,6 +1,0 @@
-<testsuites name="results">
-  <testsuite name="all" package="all">
-    <property name="random_seed" value="1777271733" />
-    <testcase name="compute_core_smoke" classname="compute_core_tb" file="/home/hx3d/opt/hw4AI-ML/project/hdl/compute_core_tb.py" lineno="58" time="0.0020356178283691406" sim_time_ns="111.0" ratio_time="54528.899508081515" />
-  </testsuite>
-</testsuites>

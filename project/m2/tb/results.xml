@@ -1,0 +1,7 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1777874430" />
+    <testcase name="compute_core_smoke" classname="tb_compute_core" file="/home/hx3d/opt/hw4AI-ML/project/m2/tb/tb_compute_core.py" lineno="72" time="0.0036787986755371094" sim_time_ns="111.0" ratio_time="30172.89332469216" />
+    <testcase name="compute_core_gemm" classname="tb_compute_core" file="/home/hx3d/opt/hw4AI-ML/project/m2/tb/tb_compute_core.py" lineno="167" time="0.004031658172607422" sim_time_ns="351.0" ratio_time="87060.95233589593" />
+  </testsuite>
+</testsuites>
