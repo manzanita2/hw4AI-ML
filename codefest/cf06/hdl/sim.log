@@ -1,0 +1,7 @@
+crossbar_tb: outputs after one compute cycle:
+  out[0]=-40 (expect -40)
+  out[1]=0 (expect 0)
+  out[2]=-20 (expect -20)
+  out[3]=-20 (expect -20)
+PASS: hand-calculated MVM matches simulation.
+crossbar_tb.sv:103: $finish called at 386000 (1ps)
