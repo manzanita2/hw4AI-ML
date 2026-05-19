@@ -1,0 +1,39 @@
+122. Printing statistics.
+
+=== crossbar_mac ===
+
+        +----------Local Count, excluding submodules.
+        | 
+     1530 wires
+     1832 wire bits
+       12 public wires
+      239 public wire bits
+        8 ports
+      111 port bits
+     1763 cells
+      491   $_ANDNOT_
+        6   $_AND_
+      128   $_DFFE_PP_
+      144   $_MUX_
+       25   $_NAND_
+      133   $_NOR_
+       99   $_NOT_
+       36   $_ORNOT_
+      265   $_OR_
+       61   $_SDFF_PP0_
+       86   $_XNOR_
+      289   $_XOR_
+
+   Area for cell type $_ANDNOT_ is unknown!
+   Area for cell type $_AND_ is unknown!
+   Area for cell type $_DFFE_PP_ is unknown!
+   Area for cell type $_MUX_ is unknown!
+   Area for cell type $_NAND_ is unknown!
+   Area for cell type $_NOR_ is unknown!
+   Area for cell type $_NOT_ is unknown!
+   Area for cell type $_ORNOT_ is unknown!
+   Area for cell type $_OR_ is unknown!
+   Area for cell type $_SDFF_PP0_ is unknown!
+   Area for cell type $_XNOR_ is unknown!
+   Area for cell type $_XOR_ is unknown!
+

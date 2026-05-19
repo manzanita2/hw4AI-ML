@@ -1,0 +1,61 @@
+{
+   "creator": "Yosys 0.62 (git sha1 7326bb7d6641500ecb285c291a54a662cb1e76cf, clang++ 21.1.2 -fPIC -O3)",
+   "invocation": "stat -json -liberty /home/hx3d/opt/hw4AI-ML/codefest/cf07/runs/RUN_2026-05-18_22-49-08/tmp/2232ba3b64904c46a25f720026686124.lib ",
+   "modules": {
+      "\\crossbar_mac": {
+         "num_wires":         1530,
+         "num_wire_bits":     1832,
+         "num_pub_wires":     12,
+         "num_pub_wire_bits": 239,
+         "num_ports":         8,
+         "num_port_bits":     111,
+         "num_memories":      0,
+         "num_memory_bits":   0,
+         "num_processes":     0,
+         "num_cells":         1763,
+         "num_submodules":       0,
+         "num_cells_by_type": {
+            "$_ANDNOT_": 491,
+            "$_AND_": 6,
+            "$_DFFE_PP_": 128,
+            "$_MUX_": 144,
+            "$_NAND_": 25,
+            "$_NOR_": 133,
+            "$_NOT_": 99,
+            "$_ORNOT_": 36,
+            "$_OR_": 265,
+            "$_SDFF_PP0_": 61,
+            "$_XNOR_": 86,
+            "$_XOR_": 289
+         }
+      }
+   },
+      "design": {
+         "num_wires":         1530,
+         "num_wire_bits":     1832,
+         "num_pub_wires":     12,
+         "num_pub_wire_bits": 239,
+         "num_ports":         8,
+         "num_port_bits":     111,
+         "num_memories":      0,
+         "num_memory_bits":   0,
+         "num_processes":     0,
+         "num_cells":         1763,
+         "num_submodules":       0,
+         "num_cells_by_type": {
+            "$_ANDNOT_": 491,
+            "$_AND_": 6,
+            "$_DFFE_PP_": 128,
+            "$_MUX_": 144,
+            "$_NAND_": 25,
+            "$_NOR_": 133,
+            "$_NOT_": 99,
+            "$_ORNOT_": 36,
+            "$_OR_": 265,
+            "$_SDFF_PP0_": 61,
+            "$_XNOR_": 86,
+            "$_XOR_": 289
+         }
+      }
+}
+

@@ -1,0 +1,1611 @@
+
+ /----------------------------------------------------------------------------\
+ |  yosys -- Yosys Open SYnthesis Suite                                       |
+ |  Copyright (C) 2012 - 2026  Claire Xenia Wolf <claire@yosyshq.com>         |
+ |  Distributed under an ISC-like license, type "license" to see terms        |
+ \----------------------------------------------------------------------------/
+ Yosys 0.62 (git sha1 7326bb7d6641500ecb285c291a54a662cb1e76cf, clang++ 21.1.2 -fPIC -O3)
+
+1. Executing Liberty frontend: /home/hx3d/.ciel/ciel/sky130/versions/8afc8346a57fe1ab7934ba5a6056ea8b43078e71/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib
+Imported 428 cell types from liberty file.
+[INFO] Using SDC file '/home/hx3d/opt/hw4AI-ML/codefest/cf07/runs/RUN_2026-05-18_22-49-08/06-yosys-synthesis/synthesis.abc.sdc' for ABC…use_slang
+
+2. Executing SLANG frontend.
+Top level design units:
+    crossbar_mac
+
+Build succeeded: 0 errors, 0 warnings
+
+2.1. Executing UNDRIVEN pass. (resolve undriven signals)
+<suppressed ~11 debug messages>
+
+2.2. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Found and cleaned up 1 empty switch in `\crossbar_mac.$0'.
+Cleaned up 1 empty switch.
+
+2.3. Executing TRIBUF pass.
+
+2.4. Executing PROC_RMDEAD pass (remove dead branches from decision trees).
+Marked 34 switch rules as full_case in process $0 in module crossbar_mac.
+Removed a total of 0 dead cases.
+
+2.5. Executing PROC_PRUNE pass (remove redundant assignments in processes).
+Removed 17 redundant assignments.
+Promoted 0 assignments to connections.
+
+2.6. Executing PROC_INIT pass (extract init attributes).
+
+2.7. Executing PROC_ROM pass (convert switches to ROMs).
+Converted 0 switches.
+<suppressed ~35 debug messages>
+
+2.8. Executing PROC_MUX pass (convert decision trees to multiplexers).
+Creating decoders for process `\crossbar_mac.$0'.
+     1/19: $$11.$2.acc$105
+     2/19: $$11.$2.acc$99
+     3/19: $$11.$2.acc$93
+     4/19: $$11.$2.acc$87
+     5/19: $$11.$2.acc$81
+     6/19: $$11.$2.acc$75
+     7/19: $$11.$2.acc$69
+     8/19: $$11.$2.acc$63
+     9/19: $$11.$2.acc$57
+    10/19: $$11.$2.acc$51
+    11/19: $$11.$2.acc$45
+    12/19: $$11.$2.acc$39
+    13/19: $$11.$2.acc$33
+    14/19: $$11.$2.acc$27
+    15/19: $$11.$2.acc$21
+    16/19: $$11.$2.acc$15
+    17/19: $out$106
+    18/19: $$11.$2.acc$107
+    19/19: $8
+
+2.9. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Found and cleaned up 35 empty switches in `\crossbar_mac.$0'.
+Removing empty process `crossbar_mac.$0'.
+Cleaned up 35 empty switches.
+
+2.10. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+
+3. Executing HIERARCHY pass (managing design hierarchy).
+
+3.1. Analyzing design hierarchy..
+Top module:  \crossbar_mac
+
+3.2. Analyzing design hierarchy..
+Top module:  \crossbar_mac
+Removed 0 unused modules.
+Renaming module crossbar_mac to crossbar_mac.
+
+4. Executing ATTRMAP pass (move or copy attributes).
+
+5. Executing TRIBUF pass.
+
+6. Executing HIERARCHY pass (managing design hierarchy).
+
+6.1. Analyzing design hierarchy..
+Top module:  \crossbar_mac
+
+6.2. Analyzing design hierarchy..
+Top module:  \crossbar_mac
+Removed 0 unused modules.
+
+7. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Cleaned up 0 empty switches.
+
+8. Executing PROC_RMDEAD pass (remove dead branches from decision trees).
+Removed a total of 0 dead cases.
+
+9. Executing PROC_PRUNE pass (remove redundant assignments in processes).
+Removed 0 redundant assignments.
+Promoted 0 assignments to connections.
+
+10. Executing PROC_INIT pass (extract init attributes).
+
+11. Executing PROC_ARST pass (detect async resets in processes).
+
+12. Executing PROC_ROM pass (convert switches to ROMs).
+Converted 0 switches.
+
+13. Executing PROC_MUX pass (convert decision trees to multiplexers).
+
+14. Executing PROC_DLATCH pass (convert process syncs to latches).
+
+15. Executing PROC_DFF pass (convert process syncs to FFs).
+
+16. Executing PROC_MEMWR pass (convert process memory writes to cells).
+
+17. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Cleaned up 0 empty switches.
+
+18. Executing CHECK pass (checking for obvious problems).
+Checking module crossbar_mac...
+Found and reported 0 problems.
+
+19. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+<suppressed ~4 debug messages>
+
+20. Executing FLATTEN pass (flatten design).
+
+21. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+
+22. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+Removed 2 unused cells and 61 unused wires.
+<suppressed ~7 debug messages>
+
+23. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+
+24. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 107 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Computing hashes of 92 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+<suppressed ~45 debug messages>
+Removed a total of 15 cells.
+
+25. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \crossbar_mac..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+    dead port 1/2 on $mux $procmux$29.
+    dead port 1/2 on $mux $procmux$5.
+    dead port 1/2 on $mux $procmux$53.
+    dead port 1/2 on $mux $procmux$77.
+Removed 4 multiplexer ports.
+<suppressed ~53 debug messages>
+
+26. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \crossbar_mac.
+Performed a total of 0 changes.
+
+27. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 88 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Removed a total of 0 cells.
+
+28. Executing OPT_DFF pass (perform DFF optimizations).
+
+29. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+Removed 0 unused cells and 19 unused wires.
+<suppressed ~1 debug messages>
+
+30. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+
+31. Rerunning OPT passes. (Maybe there is more to do…)
+
+32. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \crossbar_mac..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Removed 0 multiplexer ports.
+<suppressed ~49 debug messages>
+
+33. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \crossbar_mac.
+Performed a total of 0 changes.
+
+34. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 88 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Removed a total of 0 cells.
+
+35. Executing OPT_DFF pass (perform DFF optimizations).
+
+36. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+
+37. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+
+38. Executing FSM pass (extract and optimize FSM).
+
+38.1. Executing FSM_DETECT pass (finding FSMs in design).
+
+38.2. Executing FSM_EXTRACT pass (extracting FSM from design).
+
+38.3. Executing FSM_OPT pass (simple optimizations of FSMs).
+
+38.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+
+38.5. Executing FSM_OPT pass (simple optimizations of FSMs).
+
+38.6. Executing FSM_RECODE pass (re-assigning FSM state encoding).
+
+38.7. Executing FSM_INFO pass (dumping all available information on FSM cells).
+
+38.8. Executing FSM_MAP pass (mapping FSMs to basic logic).
+
+39. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+
+40. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 88 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Removed a total of 0 cells.
+
+41. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \crossbar_mac..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Removed 0 multiplexer ports.
+<suppressed ~49 debug messages>
+
+42. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \crossbar_mac.
+Performed a total of 0 changes.
+
+43. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 88 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Removed a total of 0 cells.
+
+44. Executing OPT_DFF pass (perform DFF optimizations).
+Adding SRST signal on $driver$out[3] ($dff) from module crossbar_mac (D = $$11.$2.acc$105, Q = \out [15:0], rval = 16'0000000000000000).
+Adding SRST signal on $driver$out[2] ($dff) from module crossbar_mac (D = $$11.$2.acc$81, Q = \out [31:16], rval = 16'0000000000000000).
+Adding SRST signal on $driver$out[1] ($dff) from module crossbar_mac (D = $$11.$2.acc$57, Q = \out [47:32], rval = 16'0000000000000000).
+Adding SRST signal on $driver$out[0] ($dff) from module crossbar_mac (D = $$11.$2.acc$33, Q = \out [63:48], rval = 16'0000000000000000).
+
+45. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+Removed 1 unused cells and 1 unused wires.
+<suppressed ~2 debug messages>
+
+46. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+
+47. Rerunning OPT passes. (Maybe there is more to do…)
+
+48. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \crossbar_mac..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Removed 0 multiplexer ports.
+<suppressed ~51 debug messages>
+
+49. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \crossbar_mac.
+Performed a total of 0 changes.
+
+50. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 87 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Removed a total of 0 cells.
+
+51. Executing OPT_DFF pass (perform DFF optimizations).
+
+52. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+
+53. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+
+54. Executing WREDUCE pass (reducing word size of cells).
+Removed top 30 address bits (of 32) from memory init port crossbar_mac.$10 (weight).
+Removed top 30 address bits (of 32) from memory init port crossbar_mac.$100 (weight).
+Removed top 30 address bits (of 32) from memory init port crossbar_mac.$16 (weight).
+Removed top 30 address bits (of 32) from memory init port crossbar_mac.$22 (weight).
+Removed top 1 bits (of 3) from port A of cell crossbar_mac.$1 ($not).
+Removed top 6 bits (of 8) from port B of cell crossbar_mac.$12 ($eq).
+Converting cell crossbar_mac.$14 ($sub) from unsigned to signed.
+Removed top 15 bits (of 16) from port A of cell crossbar_mac.$14 ($sub).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$14 ($sub).
+Removed top 7 bits (of 16) from port Y of cell crossbar_mac.$14 ($sub).
+Removed top 6 bits (of 8) from port B of cell crossbar_mac.$18 ($eq).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$19 ($add).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$20 ($sub).
+Removed top 6 bits (of 8) from port B of cell crossbar_mac.$24 ($eq).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$25 ($add).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$26 ($sub).
+Removed top 6 bits (of 8) from port B of cell crossbar_mac.$30 ($eq).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$31 ($add).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$32 ($sub).
+Removed top 6 bits (of 8) from port B of cell crossbar_mac.$36 ($eq).
+Removed top 6 bits (of 8) from port B of cell crossbar_mac.$42 ($eq).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$43 ($add).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$44 ($sub).
+Removed top 6 bits (of 8) from port B of cell crossbar_mac.$48 ($eq).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$49 ($add).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$50 ($sub).
+Removed top 6 bits (of 8) from port B of cell crossbar_mac.$54 ($eq).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$55 ($add).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$56 ($sub).
+Removed top 6 bits (of 8) from port B of cell crossbar_mac.$60 ($eq).
+Removed top 6 bits (of 8) from port B of cell crossbar_mac.$66 ($eq).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$67 ($add).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$68 ($sub).
+Removed top 6 bits (of 8) from port B of cell crossbar_mac.$72 ($eq).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$73 ($add).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$74 ($sub).
+Removed top 6 bits (of 8) from port B of cell crossbar_mac.$78 ($eq).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$79 ($add).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$80 ($sub).
+Removed top 6 bits (of 8) from port B of cell crossbar_mac.$84 ($eq).
+Removed top 6 bits (of 8) from port B of cell crossbar_mac.$90 ($eq).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$91 ($add).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$92 ($sub).
+Removed top 6 bits (of 8) from port B of cell crossbar_mac.$96 ($eq).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$97 ($add).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$98 ($sub).
+Removed top 6 bits (of 8) from port B of cell crossbar_mac.$102 ($eq).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$103 ($add).
+Removed top 8 bits (of 16) from port B of cell crossbar_mac.$104 ($sub).
+
+55. Executing PEEPOPT pass (run peephole optimizers).
+
+56. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+
+57. Executing ALUMACC pass (create $alu and $macc cells).
+Extracting $alu and $macc cells in module crossbar_mac:
+  creating $macc model for $103 ($add).
+  creating $macc model for $104 ($sub).
+  creating $macc model for $14 ($sub).
+  creating $macc model for $19 ($add).
+  creating $macc model for $20 ($sub).
+  creating $macc model for $25 ($add).
+  creating $macc model for $26 ($sub).
+  creating $macc model for $31 ($add).
+  creating $macc model for $32 ($sub).
+  creating $macc model for $43 ($add).
+  creating $macc model for $44 ($sub).
+  creating $macc model for $49 ($add).
+  creating $macc model for $50 ($sub).
+  creating $macc model for $55 ($add).
+  creating $macc model for $56 ($sub).
+  creating $macc model for $67 ($add).
+  creating $macc model for $68 ($sub).
+  creating $macc model for $73 ($add).
+  creating $macc model for $74 ($sub).
+  creating $macc model for $79 ($add).
+  creating $macc model for $80 ($sub).
+  creating $macc model for $91 ($add).
+  creating $macc model for $92 ($sub).
+  creating $macc model for $97 ($add).
+  creating $macc model for $98 ($sub).
+  creating $alu model for $macc $98.
+  creating $alu model for $macc $97.
+  creating $alu model for $macc $92.
+  creating $alu model for $macc $91.
+  creating $alu model for $macc $80.
+  creating $alu model for $macc $79.
+  creating $alu model for $macc $74.
+  creating $alu model for $macc $73.
+  creating $alu model for $macc $68.
+  creating $alu model for $macc $67.
+  creating $alu model for $macc $56.
+  creating $alu model for $macc $55.
+  creating $alu model for $macc $50.
+  creating $alu model for $macc $49.
+  creating $alu model for $macc $44.
+  creating $alu model for $macc $43.
+  creating $alu model for $macc $32.
+  creating $alu model for $macc $31.
+  creating $alu model for $macc $26.
+  creating $alu model for $macc $25.
+  creating $alu model for $macc $20.
+  creating $alu model for $macc $19.
+  creating $alu model for $macc $14.
+  creating $alu model for $macc $104.
+  creating $alu model for $macc $103.
+  creating $alu model for $2 ($ge): new $alu
+  creating $alu model for $3 ($lt): new $alu
+  creating $alu cell for $3: $auto$alumacc.cc:512:replace_alu$116
+  creating $alu cell for $2: $auto$alumacc.cc:512:replace_alu$123
+  creating $alu cell for $103: $auto$alumacc.cc:512:replace_alu$138
+  creating $alu cell for $104: $auto$alumacc.cc:512:replace_alu$141
+  creating $alu cell for $14: $auto$alumacc.cc:512:replace_alu$144
+  creating $alu cell for $19: $auto$alumacc.cc:512:replace_alu$147
+  creating $alu cell for $20: $auto$alumacc.cc:512:replace_alu$150
+  creating $alu cell for $25: $auto$alumacc.cc:512:replace_alu$153
+  creating $alu cell for $26: $auto$alumacc.cc:512:replace_alu$156
+  creating $alu cell for $31: $auto$alumacc.cc:512:replace_alu$159
+  creating $alu cell for $32: $auto$alumacc.cc:512:replace_alu$162
+  creating $alu cell for $43: $auto$alumacc.cc:512:replace_alu$165
+  creating $alu cell for $44: $auto$alumacc.cc:512:replace_alu$168
+  creating $alu cell for $49: $auto$alumacc.cc:512:replace_alu$171
+  creating $alu cell for $50: $auto$alumacc.cc:512:replace_alu$174
+  creating $alu cell for $55: $auto$alumacc.cc:512:replace_alu$177
+  creating $alu cell for $56: $auto$alumacc.cc:512:replace_alu$180
+  creating $alu cell for $67: $auto$alumacc.cc:512:replace_alu$183
+  creating $alu cell for $68: $auto$alumacc.cc:512:replace_alu$186
+  creating $alu cell for $73: $auto$alumacc.cc:512:replace_alu$189
+  creating $alu cell for $74: $auto$alumacc.cc:512:replace_alu$192
+  creating $alu cell for $79: $auto$alumacc.cc:512:replace_alu$195
+  creating $alu cell for $80: $auto$alumacc.cc:512:replace_alu$198
+  creating $alu cell for $91: $auto$alumacc.cc:512:replace_alu$201
+  creating $alu cell for $92: $auto$alumacc.cc:512:replace_alu$204
+  creating $alu cell for $97: $auto$alumacc.cc:512:replace_alu$207
+  creating $alu cell for $98: $auto$alumacc.cc:512:replace_alu$210
+  created 27 $alu and 0 $macc cells.
+
+58. Executing SHARE pass (SAT-based resource sharing).
+
+59. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+<suppressed ~3 debug messages>
+
+60. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 94 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Removed a total of 0 cells.
+
+61. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \crossbar_mac..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Removed 0 multiplexer ports.
+<suppressed ~51 debug messages>
+
+62. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \crossbar_mac.
+Performed a total of 0 changes.
+
+63. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 94 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Removed a total of 0 cells.
+
+64. Executing OPT_DFF pass (perform DFF optimizations).
+
+65. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+Removed 1 unused cells and 8 unused wires.
+<suppressed ~3 debug messages>
+
+66. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+
+67. Rerunning OPT passes. (Maybe there is more to do…)
+
+68. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \crossbar_mac..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Removed 0 multiplexer ports.
+<suppressed ~51 debug messages>
+
+69. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \crossbar_mac.
+Performed a total of 0 changes.
+
+70. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 92 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Removed a total of 0 cells.
+
+71. Executing OPT_DFF pass (perform DFF optimizations).
+
+72. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+
+73. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+
+74. Executing MEMORY pass.
+
+74.1. Executing OPT_MEM pass (optimize memories).
+Performed a total of 0 transformations.
+
+74.2. Executing OPT_MEM_PRIORITY pass (removing unnecessary memory write priority relations).
+Performed a total of 0 transformations.
+
+74.3. Executing OPT_MEM_FEEDBACK pass (finding memory read-to-write feedback paths).
+  Analyzing crossbar_mac.weight write port 0.
+
+74.4. Executing MEMORY_BMUX2ROM pass (converting muxes to ROMs).
+
+74.5. Executing MEMORY_DFF pass (merging $dff cells to $memrd).
+Checking read port `\weight'[0] in module `\crossbar_mac': no output FF found.
+Checking read port `\weight'[1] in module `\crossbar_mac': no output FF found.
+Checking read port `\weight'[2] in module `\crossbar_mac': no output FF found.
+Checking read port `\weight'[3] in module `\crossbar_mac': no output FF found.
+Checking read port address `\weight'[0] in module `\crossbar_mac': no address FF found.
+Checking read port address `\weight'[1] in module `\crossbar_mac': no address FF found.
+Checking read port address `\weight'[2] in module `\crossbar_mac': no address FF found.
+Checking read port address `\weight'[3] in module `\crossbar_mac': no address FF found.
+
+74.6. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+
+74.7. Executing MEMORY_SHARE pass (consolidating $memrd/$memwr cells).
+Consolidating read ports of memory crossbar_mac.weight by address:
+  Merging ports 0, 2 (address 2'10).
+  Merging ports 0, 3 (address 2'10).
+Consolidating read ports of memory crossbar_mac.weight by address:
+
+74.8. Executing OPT_MEM_WIDEN pass (optimize memories where all ports are wide).
+Performed a total of 0 transformations.
+
+74.9. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+Removed 0 unused cells and 1 unused wires.
+<suppressed ~1 debug messages>
+
+74.10. Executing MEMORY_COLLECT pass (generating $mem cells).
+
+75. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+
+76. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+<suppressed ~30 debug messages>
+
+77. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 71 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Removed a total of 0 cells.
+
+78. Executing OPT_DFF pass (perform DFF optimizations).
+
+79. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+Removed 5 unused cells and 30 unused wires.
+<suppressed ~6 debug messages>
+
+80. Executing MEMORY_MAP pass (converting memories to logic and flip-flops).
+Mapping memory \weight in module \crossbar_mac:
+  created 4 $dff cells and 0 static cells of width 32.
+  read interface: 0 $dff and 3 $mux cells.
+  write interface: 128 write mux blocks.
+
+81. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+<suppressed ~7 debug messages>
+
+82. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 331 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Removed a total of 0 cells.
+
+83. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \crossbar_mac..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Removed 0 multiplexer ports.
+<suppressed ~292 debug messages>
+
+84. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \crossbar_mac.
+    Consolidated identical input bits for $demux cell $6:
+      Old ports: A=8'11111111, Y=$6y
+      New ports: A=1'1, Y={ $6y [24] $6y [16] $6y [8] $6y [0] }
+      New connections: { $6y [31] $6y [23] $6y [15] $6y [7] $6y [30] $6y [22] $6y [14] $6y [6] $6y [29] $6y [21] $6y [13] $6y [5] $6y [28] $6y [20] $6y [12] $6y [4] $6y [27] $6y [19] $6y [11] $6y [3] $6y [26] $6y [18] $6y [10] $6y [2] $6y [25] $6y [17] $6y [9] $6y [1] } = { $6y [24] $6y [16] $6y [8] $6y [0] $6y [24] $6y [16] $6y [8] $6y [0] $6y [24] $6y [16] $6y [8] $6y [0] $6y [24] $6y [16] $6y [8] $6y [0] $6y [24] $6y [16] $6y [8] $6y [0] $6y [24] $6y [16] $6y [8] $6y [0] $6y [24] $6y [16] $6y [8] $6y [0] }
+    Consolidated identical input bits for $mux cell $procmux$20:
+      Old ports: A={ $14y [15] $14y [15] $14y [15] $14y [15] $14y [15] $14y [15] $14y [15] $14y [15] $14y [7:0] }, B={ \in [31] \in [31] \in [31] \in [31] \in [31] \in [31] \in [31] \in [31] \in [31:24] }, Y=$$11.$2.acc$87
+      New ports: A={ $14y [15] $14y [7:0] }, B={ \in [31] \in [31:24] }, Y=$$11.$2.acc$87 [8:0]
+      New connections: $$11.$2.acc$87 [15:9] = { $$11.$2.acc$87 [8] $$11.$2.acc$87 [8] $$11.$2.acc$87 [8] $$11.$2.acc$87 [8] $$11.$2.acc$87 [8] $$11.$2.acc$87 [8] $$11.$2.acc$87 [8] }
+    Consolidated identical input bits for $mux cell $procmux$44:
+      Old ports: A={ $14y [15] $14y [15] $14y [15] $14y [15] $14y [15] $14y [15] $14y [15] $14y [15] $14y [7:0] }, B={ \in [31] \in [31] \in [31] \in [31] \in [31] \in [31] \in [31] \in [31] \in [31:24] }, Y=$$11.$2.acc$63
+      New ports: A={ $14y [15] $14y [7:0] }, B={ \in [31] \in [31:24] }, Y=$$11.$2.acc$63 [8:0]
+      New connections: $$11.$2.acc$63 [15:9] = { $$11.$2.acc$63 [8] $$11.$2.acc$63 [8] $$11.$2.acc$63 [8] $$11.$2.acc$63 [8] $$11.$2.acc$63 [8] $$11.$2.acc$63 [8] $$11.$2.acc$63 [8] }
+    Consolidated identical input bits for $mux cell $procmux$68:
+      Old ports: A={ $14y [15] $14y [15] $14y [15] $14y [15] $14y [15] $14y [15] $14y [15] $14y [15] $14y [7:0] }, B={ \in [31] \in [31] \in [31] \in [31] \in [31] \in [31] \in [31] \in [31] \in [31:24] }, Y=$$11.$2.acc$39
+      New ports: A={ $14y [15] $14y [7:0] }, B={ \in [31] \in [31:24] }, Y=$$11.$2.acc$39 [8:0]
+      New connections: $$11.$2.acc$39 [15:9] = { $$11.$2.acc$39 [8] $$11.$2.acc$39 [8] $$11.$2.acc$39 [8] $$11.$2.acc$39 [8] $$11.$2.acc$39 [8] $$11.$2.acc$39 [8] $$11.$2.acc$39 [8] }
+    Consolidated identical input bits for $mux cell $procmux$92:
+      Old ports: A={ $14y [15] $14y [15] $14y [15] $14y [15] $14y [15] $14y [15] $14y [15] $14y [15] $14y [7:0] }, B={ \in [31] \in [31] \in [31] \in [31] \in [31] \in [31] \in [31] \in [31] \in [31:24] }, Y=$$11.$2.acc$15
+      New ports: A={ $14y [15] $14y [7:0] }, B={ \in [31] \in [31:24] }, Y=$$11.$2.acc$15 [8:0]
+      New connections: $$11.$2.acc$15 [15:9] = { $$11.$2.acc$15 [8] $$11.$2.acc$15 [8] $$11.$2.acc$15 [8] $$11.$2.acc$15 [8] $$11.$2.acc$15 [8] $$11.$2.acc$15 [8] $$11.$2.acc$15 [8] }
+  Optimizing cells in module \crossbar_mac.
+    Consolidated identical input bits for $mux cell $9:
+      Old ports: A=0, B=$6y, Y=$9y
+      New ports: A=4'0000, B={ $6y [24] $6y [16] $6y [8] $6y [0] }, Y={ $9y [24] $9y [16] $9y [8] $9y [0] }
+      New connections: { $9y [31:25] $9y [23:17] $9y [15:9] $9y [7:1] } = { $9y [24] $9y [24] $9y [24] $9y [24] $9y [24] $9y [24] $9y [24] $9y [16] $9y [16] $9y [16] $9y [16] $9y [16] $9y [16] $9y [16] $9y [8] $9y [8] $9y [8] $9y [8] $9y [8] $9y [8] $9y [8] $9y [0] $9y [0] $9y [0] $9y [0] $9y [0] $9y [0] $9y [0] }
+  Optimizing cells in module \crossbar_mac.
+Performed a total of 6 changes.
+
+85. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 331 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Computing hashes of 219 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+<suppressed ~336 debug messages>
+Removed a total of 112 cells.
+
+86. Executing OPT_SHARE pass.
+    Found cells that share an operand and can be merged by moving the $mux $procmux$14 in front of them:
+        $auto$alumacc.cc:512:replace_alu$201
+        $auto$alumacc.cc:512:replace_alu$204
+
+    Found cells that share an operand and can be merged by moving the $mux $procmux$2 in front of them:
+        $auto$alumacc.cc:512:replace_alu$138
+        $auto$alumacc.cc:512:replace_alu$141
+
+    Found cells that share an operand and can be merged by moving the $mux $procmux$26 in front of them:
+        $auto$alumacc.cc:512:replace_alu$195
+        $auto$alumacc.cc:512:replace_alu$198
+
+    Found cells that share an operand and can be merged by moving the $mux $procmux$32 in front of them:
+        $auto$alumacc.cc:512:replace_alu$189
+        $auto$alumacc.cc:512:replace_alu$192
+
+    Found cells that share an operand and can be merged by moving the $mux $procmux$38 in front of them:
+        $auto$alumacc.cc:512:replace_alu$183
+        $auto$alumacc.cc:512:replace_alu$186
+
+    Found cells that share an operand and can be merged by moving the $mux $procmux$50 in front of them:
+        $auto$alumacc.cc:512:replace_alu$177
+        $auto$alumacc.cc:512:replace_alu$180
+
+    Found cells that share an operand and can be merged by moving the $mux $procmux$56 in front of them:
+        $auto$alumacc.cc:512:replace_alu$171
+        $auto$alumacc.cc:512:replace_alu$174
+
+    Found cells that share an operand and can be merged by moving the $mux $procmux$62 in front of them:
+        $auto$alumacc.cc:512:replace_alu$165
+        $auto$alumacc.cc:512:replace_alu$168
+
+    Found cells that share an operand and can be merged by moving the $mux $procmux$74 in front of them:
+        $auto$alumacc.cc:512:replace_alu$159
+        $auto$alumacc.cc:512:replace_alu$162
+
+    Found cells that share an operand and can be merged by moving the $mux $procmux$8 in front of them:
+        $auto$alumacc.cc:512:replace_alu$207
+        $auto$alumacc.cc:512:replace_alu$210
+
+    Found cells that share an operand and can be merged by moving the $mux $procmux$80 in front of them:
+        $auto$alumacc.cc:512:replace_alu$153
+        $auto$alumacc.cc:512:replace_alu$156
+
+    Found cells that share an operand and can be merged by moving the $mux $procmux$86 in front of them:
+        $auto$alumacc.cc:512:replace_alu$147
+        $auto$alumacc.cc:512:replace_alu$150
+
+87. Executing OPT_DFF pass (perform DFF optimizations).
+
+88. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+Removed 0 unused cells and 201 unused wires.
+<suppressed ~1 debug messages>
+
+89. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+<suppressed ~12 debug messages>
+
+90. Rerunning OPT passes. (Maybe there is more to do…)
+
+91. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \crossbar_mac..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Removed 0 multiplexer ports.
+<suppressed ~292 debug messages>
+
+92. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \crossbar_mac.
+Performed a total of 0 changes.
+
+93. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 219 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Computing hashes of 210 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+<suppressed ~27 debug messages>
+Removed a total of 9 cells.
+
+94. Executing OPT_SHARE pass.
+
+95. Executing OPT_DFF pass (perform DFF optimizations).
+Adding EN signal on $memory\weight[3]$243 ($dff) from module crossbar_mac (D = \w_val, Q = \weight[3] [7:0]).
+Adding EN signal on $memory\weight[3]$243 ($dff) from module crossbar_mac (D = \w_val, Q = \weight[3] [15:8]).
+Adding EN signal on $memory\weight[3]$243 ($dff) from module crossbar_mac (D = \w_val, Q = \weight[3] [23:16]).
+Adding EN signal on $memory\weight[3]$243 ($dff) from module crossbar_mac (D = \w_val, Q = \weight[3] [31:24]).
+Adding EN signal on $memory\weight[2]$241 ($dff) from module crossbar_mac (D = \w_val, Q = \weight[2] [7:0]).
+Adding EN signal on $memory\weight[2]$241 ($dff) from module crossbar_mac (D = \w_val, Q = \weight[2] [15:8]).
+Adding EN signal on $memory\weight[2]$241 ($dff) from module crossbar_mac (D = \w_val, Q = \weight[2] [23:16]).
+Adding EN signal on $memory\weight[2]$241 ($dff) from module crossbar_mac (D = \w_val, Q = \weight[2] [31:24]).
+Adding EN signal on $memory\weight[1]$239 ($dff) from module crossbar_mac (D = \w_val, Q = \weight[1] [7:0]).
+Adding EN signal on $memory\weight[1]$239 ($dff) from module crossbar_mac (D = \w_val, Q = \weight[1] [15:8]).
+Adding EN signal on $memory\weight[1]$239 ($dff) from module crossbar_mac (D = \w_val, Q = \weight[1] [23:16]).
+Adding EN signal on $memory\weight[1]$239 ($dff) from module crossbar_mac (D = \w_val, Q = \weight[1] [31:24]).
+Adding EN signal on $memory\weight[0]$237 ($dff) from module crossbar_mac (D = \w_val, Q = \weight[0] [15:8]).
+Adding EN signal on $memory\weight[0]$237 ($dff) from module crossbar_mac (D = \w_val, Q = \weight[0] [23:16]).
+Adding EN signal on $memory\weight[0]$237 ($dff) from module crossbar_mac (D = \w_val, Q = \weight[0] [7:0]).
+Adding EN signal on $memory\weight[0]$237 ($dff) from module crossbar_mac (D = \w_val, Q = \weight[0] [31:24]).
+
+96. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+Removed 128 unused cells and 149 unused wires.
+<suppressed ~129 debug messages>
+
+97. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+
+98. Rerunning OPT passes. (Maybe there is more to do…)
+
+99. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \crossbar_mac..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Removed 0 multiplexer ports.
+<suppressed ~36 debug messages>
+
+100. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \crossbar_mac.
+Performed a total of 0 changes.
+
+101. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 94 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Removed a total of 0 cells.
+
+102. Executing OPT_SHARE pass.
+
+103. Executing OPT_DFF pass (perform DFF optimizations).
+
+104. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+
+105. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+
+106. Executing TECHMAP pass (map to technology primitives).
+
+106.1. Executing Verilog-2005 frontend: /nix/store/f1q0w7rd0a4ny4hqvfxlhs4cmariidcy-yosys-0.62/bin/../share/yosys/techmap.v
+Parsing Verilog input from `/nix/store/f1q0w7rd0a4ny4hqvfxlhs4cmariidcy-yosys-0.62/bin/../share/yosys/techmap.v' to AST representation.
+Generating RTLIL representation for module `\_90_simplemap_bool_ops'.
+Generating RTLIL representation for module `\_90_simplemap_reduce_ops'.
+Generating RTLIL representation for module `\_90_simplemap_logic_ops'.
+Generating RTLIL representation for module `\_90_simplemap_compare_ops'.
+Generating RTLIL representation for module `\_90_simplemap_various'.
+Generating RTLIL representation for module `\_90_simplemap_registers'.
+Generating RTLIL representation for module `\_90_shift_ops_shr_shl_sshl_sshr'.
+Generating RTLIL representation for module `\_90_shift_shiftx'.
+Generating RTLIL representation for module `\_90_fa'.
+Generating RTLIL representation for module `\_90_lcu_brent_kung'.
+Generating RTLIL representation for module `\_90_alu'.
+Generating RTLIL representation for module `\_90_macc'.
+Generating RTLIL representation for module `\_90_alumacc'.
+Generating RTLIL representation for module `$__div_mod_u'.
+Generating RTLIL representation for module `$__div_mod_trunc'.
+Generating RTLIL representation for module `\_90_div'.
+Generating RTLIL representation for module `\_90_mod'.
+Generating RTLIL representation for module `$__div_mod_floor'.
+Generating RTLIL representation for module `\_90_divfloor'.
+Generating RTLIL representation for module `\_90_modfloor'.
+Generating RTLIL representation for module `\_90_pow'.
+Generating RTLIL representation for module `\_90_pmux'.
+Generating RTLIL representation for module `\_90_demux'.
+Generating RTLIL representation for module `\_90_lut'.
+Generating RTLIL representation for module `$connect'.
+Generating RTLIL representation for module `$input_port'.
+Successfully finished Verilog frontend.
+
+106.2. Continuing TECHMAP pass.
+Using extmapper simplemap for cells of type $dffe.
+Using extmapper simplemap for cells of type $mux.
+Running "alumacc" on wrapper $extern:wrap:$neg:A_SIGNED=1:A_WIDTH=16:Y_WIDTH=16:394426c56d1a028ba8fdd5469b163e04011def47.
+Using template $extern:wrap:$neg:A_SIGNED=1:A_WIDTH=16:Y_WIDTH=16:394426c56d1a028ba8fdd5469b163e04011def47 for cells of type $extern:wrap:$neg:A_SIGNED=1:A_WIDTH=16:Y_WIDTH=16:394426c56d1a028ba8fdd5469b163e04011def47.
+Using extmapper simplemap for cells of type $and.
+Using extmapper simplemap for cells of type $not.
+Using template $paramod$d4c0c20b0ee59f495e14575c4397dc0a6dd9e8e6\_90_alu for cells of type $alu.
+Using template $paramod$703fbbb6d25ac6133395150f88dc94ba22787d01\_90_alu for cells of type $alu.
+Using extmapper simplemap for cells of type $sdff.
+Using template $paramod$c5c783b17ab1d780abfad8cfe6563a0a7b47a3b0\_90_demux for cells of type $demux.
+Using extmapper simplemap for cells of type $eq.
+Using extmapper simplemap for cells of type $pos.
+Using template $paramod\_90_fa\WIDTH=32'00000000000000000000000000010000 for cells of type $fa.
+Using template $paramod\_90_lcu_brent_kung\WIDTH=32'00000000000000000000000000010000 for cells of type $lcu.
+Using extmapper simplemap for cells of type $xor.
+Using template $paramod$02488ff6fa51b28bbfa470bdd9b0e548b3357746\_90_alu for cells of type $alu.
+Using template $paramod\_90_fa\WIDTH=32'00000000000000000000000000001001 for cells of type $fa.
+Using template $paramod\_90_lcu_brent_kung\WIDTH=32'00000000000000000000000000001001 for cells of type $lcu.
+Using template $paramod$5d1d2614b24accd0f9d06c4779fd9ef771faf494\_90_demux for cells of type $demux.
+Using extmapper simplemap for cells of type $or.
+No more expansions possible.
+<suppressed ~1752 debug messages>
+
+107. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+<suppressed ~2059 debug messages>
+
+108. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 2295 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Computing hashes of 2230 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Computing hashes of 2212 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Computing hashes of 2200 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Computing hashes of 2197 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+<suppressed ~294 debug messages>
+Removed a total of 98 cells.
+
+109. Executing OPT_DFF pass (perform DFF optimizations).
+
+110. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+Removed 321 unused cells and 978 unused wires.
+<suppressed ~322 debug messages>
+
+111. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+<suppressed ~6 debug messages>
+
+112. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 1870 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Computing hashes of 1861 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Computing hashes of 1849 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Computing hashes of 1810 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Computing hashes of 1774 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Computing hashes of 1766 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Computing hashes of 1758 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Computing hashes of 1754 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+<suppressed ~348 debug messages>
+Removed a total of 116 cells.
+
+113. Executing OPT_DFF pass (perform DFF optimizations).
+
+114. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+Removed 0 unused cells and 18 unused wires.
+<suppressed ~1 debug messages>
+
+115. Executing ABC pass (technology mapping using ABC).
+
+115.1. Extracting gate netlist of module `\crossbar_mac' to `<abc-temp-dir>/input.blif'..
+
+115.1.1. Executed ABC.
+Extracted 1565 gates and 1732 wires to a netlist network with 166 inputs and 77 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library /tmp/yosys-abc-S4vGrw/stdcells.genlib 
+ABC: + strash 
+ABC: + dretime 
+ABC: + map 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+115.1.2. Re-integrating ABC results.
+ABC RESULTS:               AND cells:        6
+ABC RESULTS:            ANDNOT cells:      491
+ABC RESULTS:               MUX cells:      164
+ABC RESULTS:              NAND cells:       25
+ABC RESULTS:               NOR cells:      133
+ABC RESULTS:               NOT cells:      103
+ABC RESULTS:                OR cells:      270
+ABC RESULTS:             ORNOT cells:       36
+ABC RESULTS:              XNOR cells:       90
+ABC RESULTS:               XOR cells:      289
+ABC RESULTS:        internal signals:     1489
+ABC RESULTS:           input signals:      166
+ABC RESULTS:          output signals:       77
+Removing temp directory.
+Removing global temp directory.
+
+116. Executing OPT pass (performing simple optimizations).
+
+116.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+
+116.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 1796 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Computing hashes of 1791 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Computing hashes of 1771 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Computing hashes of 1767 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Computing hashes of 1763 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+<suppressed ~99 debug messages>
+Removed a total of 33 cells.
+
+116.3. Executing OPT_DFF pass (perform DFF optimizations).
+
+116.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+Removed 0 unused cells and 882 unused wires.
+<suppressed ~1 debug messages>
+
+116.5. Finished fast OPT passes.
+
+117. Executing HIERARCHY pass (managing design hierarchy).
+
+117.1. Analyzing design hierarchy..
+Top module:  \crossbar_mac
+
+117.2. Analyzing design hierarchy..
+Top module:  \crossbar_mac
+Removed 0 unused modules.
+
+118. Executing CHECK pass (checking for obvious problems).
+Checking module crossbar_mac...
+Found and reported 0 problems.
+
+119. Printing statistics.
+
+=== crossbar_mac ===
+
+        +----------Local Count, excluding submodules.
+        | 
+     1530 wires
+     1832 wire bits
+       12 public wires
+      239 public wire bits
+        8 ports
+      111 port bits
+     1763 cells
+      491   $_ANDNOT_
+        6   $_AND_
+      128   $_DFFE_PP_
+      144   $_MUX_
+       25   $_NAND_
+      133   $_NOR_
+       99   $_NOT_
+       36   $_ORNOT_
+      265   $_OR_
+       61   $_SDFF_PP0_
+       86   $_XNOR_
+      289   $_XOR_
+
+120. Executing OPT pass (performing simple optimizations).
+
+120.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+
+120.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 1763 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Removed a total of 0 cells.
+
+120.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \crossbar_mac..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+
+120.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \crossbar_mac.
+Performed a total of 0 changes.
+
+120.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\crossbar_mac'.
+Computing hashes of 1763 cells of `\crossbar_mac'.
+Finding duplicate cells in `\crossbar_mac'.
+Removed a total of 0 cells.
+
+120.6. Executing OPT_DFF pass (perform DFF optimizations).
+
+120.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+
+120.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module crossbar_mac.
+
+120.9. Finished fast OPT passes. (There is nothing left to do.)
+
+121. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+{
+   "creator": "Yosys 0.62 (git sha1 7326bb7d6641500ecb285c291a54a662cb1e76cf, clang++ 21.1.2 -fPIC -O3)",
+   "invocation": "stat -json -liberty /home/hx3d/opt/hw4AI-ML/codefest/cf07/runs/RUN_2026-05-18_22-49-08/tmp/2232ba3b64904c46a25f720026686124.lib ",
+   "modules": {
+      "\\crossbar_mac": {
+         "num_wires":         1530,
+         "num_wire_bits":     1832,
+         "num_pub_wires":     12,
+         "num_pub_wire_bits": 239,
+         "num_ports":         8,
+         "num_port_bits":     111,
+         "num_memories":      0,
+         "num_memory_bits":   0,
+         "num_processes":     0,
+         "num_cells":         1763,
+         "num_submodules":       0,
+         "num_cells_by_type": {
+            "$_ANDNOT_": 491,
+            "$_AND_": 6,
+            "$_DFFE_PP_": 128,
+            "$_MUX_": 144,
+            "$_NAND_": 25,
+            "$_NOR_": 133,
+            "$_NOT_": 99,
+            "$_ORNOT_": 36,
+            "$_OR_": 265,
+            "$_SDFF_PP0_": 61,
+            "$_XNOR_": 86,
+            "$_XOR_": 289
+         }
+      }
+   },
+      "design": {
+         "num_wires":         1530,
+         "num_wire_bits":     1832,
+         "num_pub_wires":     12,
+         "num_pub_wire_bits": 239,
+         "num_ports":         8,
+         "num_port_bits":     111,
+         "num_memories":      0,
+         "num_memory_bits":   0,
+         "num_processes":     0,
+         "num_cells":         1763,
+         "num_submodules":       0,
+         "num_cells_by_type": {
+            "$_ANDNOT_": 491,
+            "$_AND_": 6,
+            "$_DFFE_PP_": 128,
+            "$_MUX_": 144,
+            "$_NAND_": 25,
+            "$_NOR_": 133,
+            "$_NOT_": 99,
+            "$_ORNOT_": 36,
+            "$_OR_": 265,
+            "$_SDFF_PP0_": 61,
+            "$_XNOR_": 86,
+            "$_XOR_": 289
+         }
+      }
+}
+
+122. Printing statistics.
+
+=== crossbar_mac ===
+
+        +----------Local Count, excluding submodules.
+        | 
+     1530 wires
+     1832 wire bits
+       12 public wires
+      239 public wire bits
+        8 ports
+      111 port bits
+     1763 cells
+      491   $_ANDNOT_
+        6   $_AND_
+      128   $_DFFE_PP_
+      144   $_MUX_
+       25   $_NAND_
+      133   $_NOR_
+       99   $_NOT_
+       36   $_ORNOT_
+      265   $_OR_
+       61   $_SDFF_PP0_
+       86   $_XNOR_
+      289   $_XOR_
+
+   Area for cell type $_ANDNOT_ is unknown!
+   Area for cell type $_AND_ is unknown!
+   Area for cell type $_DFFE_PP_ is unknown!
+   Area for cell type $_MUX_ is unknown!
+   Area for cell type $_NAND_ is unknown!
+   Area for cell type $_NOR_ is unknown!
+   Area for cell type $_NOT_ is unknown!
+   Area for cell type $_ORNOT_ is unknown!
+   Area for cell type $_OR_ is unknown!
+   Area for cell type $_SDFF_PP0_ is unknown!
+   Area for cell type $_XNOR_ is unknown!
+   Area for cell type $_XOR_ is unknown!
+
+[INFO] Applying tri-state buffer mapping from '/home/hx3d/.ciel/ciel/sky130/versions/8afc8346a57fe1ab7934ba5a6056ea8b43078e71/sky130A/libs.tech/openlane/sky130_fd_sc_hd/tribuff_map.v'…
+
+123. Executing TECHMAP pass (map to technology primitives).
+
+123.1. Executing Verilog-2005 frontend: /home/hx3d/.ciel/ciel/sky130/versions/8afc8346a57fe1ab7934ba5a6056ea8b43078e71/sky130A/libs.tech/openlane/sky130_fd_sc_hd/tribuff_map.v
+Parsing Verilog input from `/home/hx3d/.ciel/ciel/sky130/versions/8afc8346a57fe1ab7934ba5a6056ea8b43078e71/sky130A/libs.tech/openlane/sky130_fd_sc_hd/tribuff_map.v' to AST representation.
+Generating RTLIL representation for module `$_TBUF_'.
+Successfully finished Verilog frontend.
+
+123.2. Continuing TECHMAP pass.
+No more expansions possible.
+<suppressed ~3 debug messages>
+
+124. Executing SIMPLEMAP pass (map simple cells to gate primitives).
+[INFO] Applying latch mapping from '/home/hx3d/.ciel/ciel/sky130/versions/8afc8346a57fe1ab7934ba5a6056ea8b43078e71/sky130A/libs.tech/openlane/sky130_fd_sc_hd/latch_map.v'…
+
+125. Executing TECHMAP pass (map to technology primitives).
+
+125.1. Executing Verilog-2005 frontend: /home/hx3d/.ciel/ciel/sky130/versions/8afc8346a57fe1ab7934ba5a6056ea8b43078e71/sky130A/libs.tech/openlane/sky130_fd_sc_hd/latch_map.v
+Parsing Verilog input from `/home/hx3d/.ciel/ciel/sky130/versions/8afc8346a57fe1ab7934ba5a6056ea8b43078e71/sky130A/libs.tech/openlane/sky130_fd_sc_hd/latch_map.v' to AST representation.
+Generating RTLIL representation for module `$_DLATCH_P_'.
+Generating RTLIL representation for module `$_DLATCH_N_'.
+Successfully finished Verilog frontend.
+
+125.2. Continuing TECHMAP pass.
+No more expansions possible.
+<suppressed ~4 debug messages>
+
+126. Executing SIMPLEMAP pass (map simple cells to gate primitives).
+
+127. Executing DFFLIBMAP pass (mapping DFF cells to sequential cells from liberty file).
+  cell sky130_fd_sc_hd__dfxtp_2 (noninv, pins=3, area=21.27) is a direct match for cell type $_DFF_P_.
+  cell sky130_fd_sc_hd__dfrtp_2 (noninv, pins=4, area=26.28) is a direct match for cell type $_DFF_PN0_.
+  cell sky130_fd_sc_hd__dfstp_2 (noninv, pins=4, area=26.28) is a direct match for cell type $_DFF_PN1_.
+  cell sky130_fd_sc_hd__dfbbn_2 (noninv, pins=6, area=35.03) is a direct match for cell type $_DFFSR_NNN_.
+  final dff cell mappings:
+    unmapped dff cell: $_DFF_N_
+    \sky130_fd_sc_hd__dfxtp_2 _DFF_P_ (.CLK( C), .D( D), .Q( Q));
+    unmapped dff cell: $_DFF_NN0_
+    unmapped dff cell: $_DFF_NN1_
+    unmapped dff cell: $_DFF_NP0_
+    unmapped dff cell: $_DFF_NP1_
+    \sky130_fd_sc_hd__dfrtp_2 _DFF_PN0_ (.CLK( C), .D( D), .Q( Q), .RESET_B( R));
+    \sky130_fd_sc_hd__dfstp_2 _DFF_PN1_ (.CLK( C), .D( D), .Q( Q), .SET_B( R));
+    unmapped dff cell: $_DFF_PP0_
+    unmapped dff cell: $_DFF_PP1_
+    unmapped dff cell: $_DFFE_NN_
+    unmapped dff cell: $_DFFE_NP_
+    unmapped dff cell: $_DFFE_PN_
+    unmapped dff cell: $_DFFE_PP_
+    \sky130_fd_sc_hd__dfbbn_2 _DFFSR_NNN_ (.CLK_N( C), .D( D), .Q( Q), .Q_N(~Q), .RESET_B( R), .SET_B( S));
+    unmapped dff cell: $_DFFSR_NNP_
+    unmapped dff cell: $_DFFSR_NPN_
+    unmapped dff cell: $_DFFSR_NPP_
+    unmapped dff cell: $_DFFSR_PNN_
+    unmapped dff cell: $_DFFSR_PNP_
+    unmapped dff cell: $_DFFSR_PPN_
+    unmapped dff cell: $_DFFSR_PPP_
+
+127.1. Executing DFFLEGALIZE pass (convert FFs to types supported by the target).
+Mapping DFF cells in module `\crossbar_mac':
+  mapped 189 $_DFF_P_ cells to \sky130_fd_sc_hd__dfxtp_2 cells.
+{
+   "creator": "Yosys 0.62 (git sha1 7326bb7d6641500ecb285c291a54a662cb1e76cf, clang++ 21.1.2 -fPIC -O3)",
+   "invocation": "stat -json -liberty /home/hx3d/opt/hw4AI-ML/codefest/cf07/runs/RUN_2026-05-18_22-49-08/tmp/2232ba3b64904c46a25f720026686124.lib ",
+   "modules": {
+      "\\crossbar_mac": {
+         "num_wires":         1719,
+         "num_wire_bits":     2021,
+         "num_pub_wires":     12,
+         "num_pub_wire_bits": 239,
+         "num_ports":         8,
+         "num_port_bits":     111,
+         "num_memories":      0,
+         "num_memory_bits":   0,
+         "num_processes":     0,
+         "num_cells":         1952,
+         "num_submodules":       0,
+         "area":              4020.105600,
+         "sequential_area":    4020.105600,
+         "num_cells_by_type": {
+            "$_ANDNOT_": 491,
+            "$_AND_": 6,
+            "$_MUX_": 333,
+            "$_NAND_": 25,
+            "$_NOR_": 133,
+            "$_NOT_": 99,
+            "$_ORNOT_": 36,
+            "$_OR_": 265,
+            "$_XNOR_": 86,
+            "$_XOR_": 289,
+            "sky130_fd_sc_hd__dfxtp_2": 189
+         }
+      }
+   },
+      "design": {
+         "num_wires":         1719,
+         "num_wire_bits":     2021,
+         "num_pub_wires":     12,
+         "num_pub_wire_bits": 239,
+         "num_ports":         8,
+         "num_port_bits":     111,
+         "num_memories":      0,
+         "num_memory_bits":   0,
+         "num_processes":     0,
+         "num_cells":         1952,
+         "num_submodules":       0,
+         "area":              4020.105600,
+         "sequential_area":    4020.105600,
+         "num_cells_by_type": {
+            "$_ANDNOT_": 491,
+            "$_AND_": 6,
+            "$_MUX_": 333,
+            "$_NAND_": 25,
+            "$_NOR_": 133,
+            "$_NOT_": 99,
+            "$_ORNOT_": 36,
+            "$_OR_": 265,
+            "$_XNOR_": 86,
+            "$_XOR_": 289,
+            "sky130_fd_sc_hd__dfxtp_2": 189
+         }
+      }
+}
+
+128. Printing statistics.
+
+=== crossbar_mac ===
+
+        +----------Local Count, excluding submodules.
+        |        +-Local Area, excluding submodules.
+        |        | 
+     1719        - wires
+     2021        - wire bits
+       12        - public wires
+      239        - public wire bits
+        8        - ports
+      111        - port bits
+     1952 4.02E+03 cells
+      491        -   $_ANDNOT_
+        6        -   $_AND_
+      333        -   $_MUX_
+       25        -   $_NAND_
+      133        -   $_NOR_
+       99        -   $_NOT_
+       36        -   $_ORNOT_
+      265        -   $_OR_
+       86        -   $_XNOR_
+      289        -   $_XOR_
+      189 4.02E+03   sky130_fd_sc_hd__dfxtp_2
+
+   Area for cell type $_ANDNOT_ is unknown!
+   Area for cell type $_AND_ is unknown!
+   Area for cell type $_MUX_ is unknown!
+   Area for cell type $_NAND_ is unknown!
+   Area for cell type $_NOR_ is unknown!
+   Area for cell type $_NOT_ is unknown!
+   Area for cell type $_ORNOT_ is unknown!
+   Area for cell type $_OR_ is unknown!
+   Area for cell type $_XNOR_ is unknown!
+   Area for cell type $_XOR_ is unknown!
+
+   Chip area for module '\crossbar_mac': 4020.105600
+     of which used for sequential elements: 4020.105600 (100.00%)
+
+[INFO] Using generated ABC script '/home/hx3d/opt/hw4AI-ML/codefest/cf07/runs/RUN_2026-05-18_22-49-08/06-yosys-synthesis/AREA_0.abc'…
+
+129. Executing ABC pass (technology mapping using ABC).
+
+129.1. Extracting gate netlist of module `\crossbar_mac' to `/tmp/yosys-abc-XagP1E/input.blif'..
+
+129.1.1. Executed ABC.
+Extracted 1763 gates and 1938 wires to a netlist network with 174 inputs and 189 outputs.
+Running ABC script: /tmp/yosys-abc-XagP1E/abc.script
+ABC: ======== ABC command line "source /tmp/yosys-abc-XagP1E/abc.script"
+ABC: + read_blif /tmp/yosys-abc-XagP1E/input.blif 
+ABC: + read_lib -w /home/hx3d/opt/hw4AI-ML/codefest/cf07/runs/RUN_2026-05-18_22-49-08/tmp/2232ba3b64904c46a25f720026686124.lib 
+ABC: Parsing finished successfully.  Parsing time =     0.03 sec
+ABC: Scl_LibertyReadGenlib() skipped sequential cell "sky130_fd_sc_hd__dfbbn_2".
+ABC: Scl_LibertyReadGenlib() skipped sequential cell "sky130_fd_sc_hd__dfrbp_2".
+ABC: Scl_LibertyReadGenlib() skipped sequential cell "sky130_fd_sc_hd__dfrtp_2".
+ABC: Scl_LibertyReadGenlib() skipped sequential cell "sky130_fd_sc_hd__dfrtp_4".
+ABC: Scl_LibertyReadGenlib() skipped sequential cell "sky130_fd_sc_hd__dfsbp_2".
+ABC: Scl_LibertyReadGenlib() skipped sequential cell "sky130_fd_sc_hd__dfstp_2".
+ABC: Scl_LibertyReadGenlib() skipped sequential cell "sky130_fd_sc_hd__dfstp_4".
+ABC: Scl_LibertyReadGenlib() skipped sequential cell "sky130_fd_sc_hd__dfxbp_2".
+ABC: Scl_LibertyReadGenlib() skipped sequential cell "sky130_fd_sc_hd__dfxtp_2".
+ABC: Scl_LibertyReadGenlib() skipped sequential cell "sky130_fd_sc_hd__dfxtp_4".
+ABC: Scl_LibertyReadGenlib() skipped sequential cell "sky130_fd_sc_hd__dlxtn_1".
+ABC: Scl_LibertyReadGenlib() skipped sequential cell "sky130_fd_sc_hd__dlxtn_2".
+ABC: Scl_LibertyReadGenlib() skipped sequential cell "sky130_fd_sc_hd__dlxtn_4".
+ABC: Scl_LibertyReadGenlib() skipped sequential cell "sky130_fd_sc_hd__dlxtp_1".
+ABC: Scl_LibertyReadGenlib() skipped three-state cell "sky130_fd_sc_hd__ebufn_2".
+ABC: Scl_LibertyReadGenlib() skipped three-state cell "sky130_fd_sc_hd__ebufn_4".
+ABC: Scl_LibertyReadGenlib() skipped three-state cell "sky130_fd_sc_hd__ebufn_8".
+ABC: Library "sky130_fd_sc_hd__tt_025C_1v80" from "/home/hx3d/opt/hw4AI-ML/codefest/cf07/runs/RUN_2026-05-18_22-49-08/tmp/2232ba3b64904c46a25f720026686124.lib" has 175 cells (17 skipped: 14 seq; 3 tri-state; 0 no func; 0 dont_use; 0 with 2 outputs; 0 with 3+ outputs).  Time =     0.05 sec
+ABC: Memory =    9.54 MB. Time =     0.05 sec
+ABC: Warning: Detected 2 multi-output cells (for example, "sky130_fd_sc_hd__fa_1").
+ABC: + read_constr -v /home/hx3d/opt/hw4AI-ML/codefest/cf07/runs/RUN_2026-05-18_22-49-08/06-yosys-synthesis/synthesis.abc.sdc 
+ABC: Setting driving cell to be "sky130_fd_sc_hd__inv_2/Y".
+ABC: Setting output load to be 33.442001.
+ABC: + source /home/hx3d/opt/hw4AI-ML/codefest/cf07/runs/RUN_2026-05-18_22-49-08/06-yosys-synthesis/AREA_0.abc 
+ABC: Fanins of node 787: Vector has 2 entries: { 729 729 }
+ABC: Abc_NtkFastExtract: Nodes have duplicated fanins. FX is not performed.
+ABC: Error: The network is combinational.
+ABC: Cannot find the default PI driving cell (sky130_fd_sc_hd__inv_2/Y) in the library.
+ABC: WireLoad = "none"  Gates =    909 (  1.0 %)   Cap = 13.3 ff (  7.1 %)   Area =     9211.33 ( 72.3 %)   Delay =  4831.42 ps  (  2.9 %)               
+ABC: Path  0 --      32 : 0    2 pi                        A =   0.00  Df =   0.0   -0.0 ps  S =   0.0 ps  Cin =  0.0 ff  Cout =   3.1 ff  Cmax =   0.0 ff  G =    0  
+ABC: Path  1 --     484 : 4    3 sky130_fd_sc_hd__or4_2    A =   8.76  Df = 697.3 -577.5 ps  S = 134.5 ps  Cin =  1.5 ff  Cout =  11.4 ff  Cmax = 310.4 ff  G =  723  
+ABC: Path  2 --     490 : 3    2 sky130_fd_sc_hd__or3_2    A =   7.51  Df =1190.6 -857.5 ps  S =  91.5 ps  Cin =  1.5 ff  Cout =   7.0 ff  Cmax = 310.4 ff  G =  443  
+ABC: Path  3 --     492 : 4    3 sky130_fd_sc_hd__a211o_2  A =  10.01  Df =1555.7 -506.9 ps  S =  65.4 ps  Cin =  2.4 ff  Cout =   9.6 ff  Cmax = 325.0 ff  G =  390  
+ABC: Path  4 --     520 : 3    2 sky130_fd_sc_hd__a21bo_2  A =  10.01  Df =1796.9 -559.8 ps  S =  76.4 ps  Cin =  2.0 ff  Cout =  11.5 ff  Cmax = 288.4 ff  G =  542  
+ABC: Path  5 --     542 : 3    2 sky130_fd_sc_hd__a21o_2   A =   8.76  Df =2008.5 -454.7 ps  S =  70.1 ps  Cin =  2.4 ff  Cout =  11.5 ff  Cmax = 309.5 ff  G =  469  
+ABC: Path  6 --     572 : 3    2 sky130_fd_sc_hd__a21o_2   A =   8.76  Df =2219.7 -517.8 ps  S =  70.1 ps  Cin =  2.4 ff  Cout =  11.5 ff  Cmax = 309.5 ff  G =  469  
+ABC: Path  7 --     594 : 3    2 sky130_fd_sc_hd__a21o_2   A =   8.76  Df =2431.7 -580.3 ps  S =  71.6 ps  Cin =  2.4 ff  Cout =  11.8 ff  Cmax = 309.5 ff  G =  482  
+ABC: Path  8 --     624 : 3    2 sky130_fd_sc_hd__a21o_2   A =   8.76  Df =2644.1 -642.7 ps  S =  71.6 ps  Cin =  2.4 ff  Cout =  11.8 ff  Cmax = 309.5 ff  G =  482  
+ABC: Path  9 --     653 : 3    2 sky130_fd_sc_hd__a21o_2   A =   8.76  Df =2855.6 -705.4 ps  S =  70.9 ps  Cin =  2.4 ff  Cout =  11.5 ff  Cmax = 309.5 ff  G =  469  
+ABC: Path 10 --     663 : 2    2 sky130_fd_sc_hd__xnor2_2  A =  16.27  Df =3084.2 -409.5 ps  S = 224.9 ps  Cin =  8.5 ff  Cout =  13.6 ff  Cmax = 121.8 ff  G =  154  
+ABC: Path 11 --     669 : 2    2 sky130_fd_sc_hd__xnor2_2  A =  16.27  Df =3310.4 -417.6 ps  S = 195.6 ps  Cin =  8.5 ff  Cout =  11.1 ff  Cmax = 121.8 ff  G =  124  
+ABC: Path 12 --     681 : 3    2 sky130_fd_sc_hd__o21a_2   A =   8.76  Df =3545.6  -97.6 ps  S =  87.2 ps  Cin =  2.4 ff  Cout =  14.1 ff  Cmax = 294.8 ff  G =  567  
+ABC: Path 13 --     697 : 3    7 sky130_fd_sc_hd__o21ai_2  A =   8.76  Df =3938.2 -338.2 ps  S = 451.1 ps  Cin =  4.5 ff  Cout =  38.5 ff  Cmax = 139.2 ff  G =  814  
+ABC: Path 14 --     701 : 3    1 sky130_fd_sc_hd__a21boi_2 A =  11.26  Df =4831.4 -377.9 ps  S = 412.0 ps  Cin =  3.6 ff  Cout =  33.4 ff  Cmax = 129.1 ff  G =  930  
+ABC: Start-point = pi31 (\weight[1] [29]).  End-point = po94 ($auto$rtlil.cc:3583:MuxGate$7059).
+ABC: netlist                       : i/o =  174/  189  lat =    0  nd =   909  edge =   2419  area =9212.79  delay =17.00  lev = 17
+ABC: + write_blif /tmp/yosys-abc-XagP1E/output.blif 
+
+129.1.2. Re-integrating ABC results.
+ABC RESULTS:   sky130_fd_sc_hd__a211o_2 cells:        3
+ABC RESULTS:   sky130_fd_sc_hd__a21bo_2 cells:        5
+ABC RESULTS:   sky130_fd_sc_hd__a21boi_2 cells:       13
+ABC RESULTS:   sky130_fd_sc_hd__a21o_2 cells:       42
+ABC RESULTS:   sky130_fd_sc_hd__a21oi_2 cells:       63
+ABC RESULTS:   sky130_fd_sc_hd__a221o_2 cells:        2
+ABC RESULTS:   sky130_fd_sc_hd__and2_2 cells:       70
+ABC RESULTS:   sky130_fd_sc_hd__and2b_2 cells:       16
+ABC RESULTS:   sky130_fd_sc_hd__and3_2 cells:       13
+ABC RESULTS:   sky130_fd_sc_hd__and3b_2 cells:        1
+ABC RESULTS:   sky130_fd_sc_hd__and4b_2 cells:        1
+ABC RESULTS:   sky130_fd_sc_hd__inv_2 cells:        9
+ABC RESULTS:   sky130_fd_sc_hd__mux2_1 cells:      231
+ABC RESULTS:   sky130_fd_sc_hd__nand2_2 cells:       35
+ABC RESULTS:   sky130_fd_sc_hd__nand2b_2 cells:       12
+ABC RESULTS:   sky130_fd_sc_hd__nand3_2 cells:        6
+ABC RESULTS:   sky130_fd_sc_hd__nand3b_2 cells:        1
+ABC RESULTS:   sky130_fd_sc_hd__nor2_2 cells:       69
+ABC RESULTS:   sky130_fd_sc_hd__nor3_2 cells:        2
+ABC RESULTS:   sky130_fd_sc_hd__nor3b_2 cells:        1
+ABC RESULTS:   sky130_fd_sc_hd__nor4_2 cells:        3
+ABC RESULTS:   sky130_fd_sc_hd__nor4b_2 cells:        3
+ABC RESULTS:   sky130_fd_sc_hd__o211a_2 cells:        1
+ABC RESULTS:   sky130_fd_sc_hd__o211ai_2 cells:        3
+ABC RESULTS:   sky130_fd_sc_hd__o21a_2 cells:       52
+ABC RESULTS:   sky130_fd_sc_hd__o21ai_2 cells:       20
+ABC RESULTS:   sky130_fd_sc_hd__o21ba_2 cells:        1
+ABC RESULTS:   sky130_fd_sc_hd__o21bai_2 cells:       12
+ABC RESULTS:   sky130_fd_sc_hd__o22a_2 cells:        5
+ABC RESULTS:   sky130_fd_sc_hd__o22ai_2 cells:        1
+ABC RESULTS:   sky130_fd_sc_hd__o31a_2 cells:        1
+ABC RESULTS:   sky130_fd_sc_hd__o31ai_2 cells:        4
+ABC RESULTS:   sky130_fd_sc_hd__or2_2 cells:       26
+ABC RESULTS:   sky130_fd_sc_hd__or3_2 cells:       12
+ABC RESULTS:   sky130_fd_sc_hd__or3b_2 cells:        3
+ABC RESULTS:   sky130_fd_sc_hd__or4_2 cells:       22
+ABC RESULTS:   sky130_fd_sc_hd__or4b_2 cells:       14
+ABC RESULTS:   sky130_fd_sc_hd__or4bb_2 cells:        2
+ABC RESULTS:   sky130_fd_sc_hd__xnor2_2 cells:       73
+ABC RESULTS:   sky130_fd_sc_hd__xor2_2 cells:       56
+ABC RESULTS:        internal signals:     1575
+ABC RESULTS:           input signals:      174
+ABC RESULTS:          output signals:      189
+Removing temp directory.
+Removing global temp directory.
+
+130. Executing SETUNDEF pass (replace undef values with defined constants).
+
+131. Executing HILOMAP pass (mapping to constant drivers).
+
+132. Executing SPLITNETS pass (splitting up multi-bit signals).
+
+133. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \crossbar_mac..
+Removed 0 unused cells and 1956 unused wires.
+<suppressed ~1 debug messages>
+
+134. Executing INSBUF pass (insert buffer cells for connected wires).
+Add crossbar_mac/$auto$insbuf.cc:97:execute$8158: \out [48] -> \out [0]
+Add crossbar_mac/$auto$insbuf.cc:97:execute$8159: \out [48] -> \out [16]
+Add crossbar_mac/$auto$insbuf.cc:97:execute$8160: \out [48] -> \out [32]
+
+135. Executing CHECK pass (checking for obvious problems).
+Checking module crossbar_mac...
+Found and reported 0 problems.
+{
+   "creator": "Yosys 0.62 (git sha1 7326bb7d6641500ecb285c291a54a662cb1e76cf, clang++ 21.1.2 -fPIC -O3)",
+   "invocation": "stat -json -liberty /home/hx3d/opt/hw4AI-ML/codefest/cf07/runs/RUN_2026-05-18_22-49-08/tmp/2232ba3b64904c46a25f720026686124.lib ",
+   "modules": {
+      "\\crossbar_mac": {
+         "num_wires":         1045,
+         "num_wire_bits":     1148,
+         "num_pub_wires":     136,
+         "num_pub_wire_bits": 239,
+         "num_ports":         8,
+         "num_port_bits":     111,
+         "num_memories":      0,
+         "num_memory_bits":   0,
+         "num_processes":     0,
+         "num_cells":         1101,
+         "num_submodules":       0,
+         "area":              13246.454400,
+         "sequential_area":    4020.105600,
+         "num_cells_by_type": {
+            "sky130_fd_sc_hd__a211o_2": 3,
+            "sky130_fd_sc_hd__a21bo_2": 5,
+            "sky130_fd_sc_hd__a21boi_2": 13,
+            "sky130_fd_sc_hd__a21o_2": 42,
+            "sky130_fd_sc_hd__a21oi_2": 63,
+            "sky130_fd_sc_hd__a221o_2": 2,
+            "sky130_fd_sc_hd__and2_2": 70,
+            "sky130_fd_sc_hd__and2b_2": 16,
+            "sky130_fd_sc_hd__and3_2": 13,
+            "sky130_fd_sc_hd__and3b_2": 1,
+            "sky130_fd_sc_hd__and4b_2": 1,
+            "sky130_fd_sc_hd__buf_2": 3,
+            "sky130_fd_sc_hd__dfxtp_2": 189,
+            "sky130_fd_sc_hd__inv_2": 9,
+            "sky130_fd_sc_hd__mux2_1": 231,
+            "sky130_fd_sc_hd__nand2_2": 35,
+            "sky130_fd_sc_hd__nand2b_2": 12,
+            "sky130_fd_sc_hd__nand3_2": 6,
+            "sky130_fd_sc_hd__nand3b_2": 1,
+            "sky130_fd_sc_hd__nor2_2": 69,
+            "sky130_fd_sc_hd__nor3_2": 2,
+            "sky130_fd_sc_hd__nor3b_2": 1,
+            "sky130_fd_sc_hd__nor4_2": 3,
+            "sky130_fd_sc_hd__nor4b_2": 3,
+            "sky130_fd_sc_hd__o211a_2": 1,
+            "sky130_fd_sc_hd__o211ai_2": 3,
+            "sky130_fd_sc_hd__o21a_2": 52,
+            "sky130_fd_sc_hd__o21ai_2": 20,
+            "sky130_fd_sc_hd__o21ba_2": 1,
+            "sky130_fd_sc_hd__o21bai_2": 12,
+            "sky130_fd_sc_hd__o22a_2": 5,
+            "sky130_fd_sc_hd__o22ai_2": 1,
+            "sky130_fd_sc_hd__o31a_2": 1,
+            "sky130_fd_sc_hd__o31ai_2": 4,
+            "sky130_fd_sc_hd__or2_2": 26,
+            "sky130_fd_sc_hd__or3_2": 12,
+            "sky130_fd_sc_hd__or3b_2": 3,
+            "sky130_fd_sc_hd__or4_2": 22,
+            "sky130_fd_sc_hd__or4b_2": 14,
+            "sky130_fd_sc_hd__or4bb_2": 2,
+            "sky130_fd_sc_hd__xnor2_2": 73,
+            "sky130_fd_sc_hd__xor2_2": 56
+         }
+      }
+   },
+      "design": {
+         "num_wires":         1045,
+         "num_wire_bits":     1148,
+         "num_pub_wires":     136,
+         "num_pub_wire_bits": 239,
+         "num_ports":         8,
+         "num_port_bits":     111,
+         "num_memories":      0,
+         "num_memory_bits":   0,
+         "num_processes":     0,
+         "num_cells":         1101,
+         "num_submodules":       0,
+         "area":              13246.454400,
+         "sequential_area":    4020.105600,
+         "num_cells_by_type": {
+            "sky130_fd_sc_hd__a211o_2": 3,
+            "sky130_fd_sc_hd__a21bo_2": 5,
+            "sky130_fd_sc_hd__a21boi_2": 13,
+            "sky130_fd_sc_hd__a21o_2": 42,
+            "sky130_fd_sc_hd__a21oi_2": 63,
+            "sky130_fd_sc_hd__a221o_2": 2,
+            "sky130_fd_sc_hd__and2_2": 70,
+            "sky130_fd_sc_hd__and2b_2": 16,
+            "sky130_fd_sc_hd__and3_2": 13,
+            "sky130_fd_sc_hd__and3b_2": 1,
+            "sky130_fd_sc_hd__and4b_2": 1,
+            "sky130_fd_sc_hd__buf_2": 3,
+            "sky130_fd_sc_hd__dfxtp_2": 189,
+            "sky130_fd_sc_hd__inv_2": 9,
+            "sky130_fd_sc_hd__mux2_1": 231,
+            "sky130_fd_sc_hd__nand2_2": 35,
+            "sky130_fd_sc_hd__nand2b_2": 12,
+            "sky130_fd_sc_hd__nand3_2": 6,
+            "sky130_fd_sc_hd__nand3b_2": 1,
+            "sky130_fd_sc_hd__nor2_2": 69,
+            "sky130_fd_sc_hd__nor3_2": 2,
+            "sky130_fd_sc_hd__nor3b_2": 1,
+            "sky130_fd_sc_hd__nor4_2": 3,
+            "sky130_fd_sc_hd__nor4b_2": 3,
+            "sky130_fd_sc_hd__o211a_2": 1,
+            "sky130_fd_sc_hd__o211ai_2": 3,
+            "sky130_fd_sc_hd__o21a_2": 52,
+            "sky130_fd_sc_hd__o21ai_2": 20,
+            "sky130_fd_sc_hd__o21ba_2": 1,
+            "sky130_fd_sc_hd__o21bai_2": 12,
+            "sky130_fd_sc_hd__o22a_2": 5,
+            "sky130_fd_sc_hd__o22ai_2": 1,
+            "sky130_fd_sc_hd__o31a_2": 1,
+            "sky130_fd_sc_hd__o31ai_2": 4,
+            "sky130_fd_sc_hd__or2_2": 26,
+            "sky130_fd_sc_hd__or3_2": 12,
+            "sky130_fd_sc_hd__or3b_2": 3,
+            "sky130_fd_sc_hd__or4_2": 22,
+            "sky130_fd_sc_hd__or4b_2": 14,
+            "sky130_fd_sc_hd__or4bb_2": 2,
+            "sky130_fd_sc_hd__xnor2_2": 73,
+            "sky130_fd_sc_hd__xor2_2": 56
+         }
+      }
+}
+
+136. Printing statistics.
+
+=== crossbar_mac ===
+
+        +----------Local Count, excluding submodules.
+        |        +-Local Area, excluding submodules.
+        |        | 
+     1045        - wires
+     1148        - wire bits
+      136        - public wires
+      239        - public wire bits
+        8        - ports
+      111        - port bits
+     1101 1.32E+04 cells
+        3   30.029   sky130_fd_sc_hd__a211o_2
+        5   50.048   sky130_fd_sc_hd__a21bo_2
+       13   146.39   sky130_fd_sc_hd__a21boi_2
+       42  367.853   sky130_fd_sc_hd__a21o_2
+       63  551.779   sky130_fd_sc_hd__a21oi_2
+        2   22.522   sky130_fd_sc_hd__a221o_2
+       70  525.504   sky130_fd_sc_hd__and2_2
+       16  140.134   sky130_fd_sc_hd__and2b_2
+       13   97.594   sky130_fd_sc_hd__and3_2
+        1    10.01   sky130_fd_sc_hd__and3b_2
+        1   11.261   sky130_fd_sc_hd__and4b_2
+        3   15.014   sky130_fd_sc_hd__buf_2
+      189 4.02E+03   sky130_fd_sc_hd__dfxtp_2
+        9   33.782   sky130_fd_sc_hd__inv_2
+      231  2.6E+03   sky130_fd_sc_hd__mux2_1
+       35   218.96   sky130_fd_sc_hd__nand2_2
+       12  105.101   sky130_fd_sc_hd__nand2b_2
+        6   60.058   sky130_fd_sc_hd__nand3_2
+        1   11.261   sky130_fd_sc_hd__nand3b_2
+       69  431.664   sky130_fd_sc_hd__nor2_2
+        2   20.019   sky130_fd_sc_hd__nor3_2
+        1   12.512   sky130_fd_sc_hd__nor3b_2
+        3   37.536   sky130_fd_sc_hd__nor4_2
+        3   45.043   sky130_fd_sc_hd__nor4b_2
+        1    10.01   sky130_fd_sc_hd__o211a_2
+        3   37.536   sky130_fd_sc_hd__o211ai_2
+       52  455.437   sky130_fd_sc_hd__o21a_2
+       20  175.168   sky130_fd_sc_hd__o21ai_2
+        1    10.01   sky130_fd_sc_hd__o21ba_2
+       12   135.13   sky130_fd_sc_hd__o21bai_2
+        5   50.048   sky130_fd_sc_hd__o22a_2
+        1   12.512   sky130_fd_sc_hd__o22ai_2
+        1    10.01   sky130_fd_sc_hd__o31a_2
+        4   50.048   sky130_fd_sc_hd__o31ai_2
+       26  162.656   sky130_fd_sc_hd__or2_2
+       12   90.086   sky130_fd_sc_hd__or3_2
+        3   26.275   sky130_fd_sc_hd__or3b_2
+       22  192.685   sky130_fd_sc_hd__or4_2
+       14  140.134   sky130_fd_sc_hd__or4b_2
+        2   25.024   sky130_fd_sc_hd__or4bb_2
+       73 1.19E+03   sky130_fd_sc_hd__xnor2_2
+       56  910.874   sky130_fd_sc_hd__xor2_2
+
+   Chip area for module '\crossbar_mac': 13246.454400
+     of which used for sequential elements: 4020.105600 (30.35%)
+
+137. Executing AUTONAME pass.
+Renamed 2010 objects in module crossbar_mac (195 iterations).
+<suppressed ~2010 debug messages>
+
+138. Executing Verilog backend.
+Dumping module `\crossbar_mac'.
+
+139. Executing JSON backend.
