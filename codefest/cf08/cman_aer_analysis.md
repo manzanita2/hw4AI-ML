@@ -2,13 +2,13 @@
 
 $R = 1024*50 = 51200 \frac{spike}{sec}$
 
-2)
+
 
 $B = 51200 * 20 = 1024000 \frac{bits}{sec}$
 
 $MB/s = \frac{1024000}{10^6} = 1.024
 
-3)
+
 
 all three interfaces would work,
 
@@ -16,7 +16,7 @@ SPI is the lowest complexity to implement.
 
 I2C is the least bandwidth.  
 
-4)
+
 
 $25% * B = 5120 bits$
 
@@ -36,7 +36,7 @@ burst to mean ratio = $\frac{5.12}{1.024} = 5$
 
 i2c cannot handle the burst without buffering.  
 
-5)
+
 
 frame-based:
 
@@ -50,10 +50,9 @@ ratio = $\frac{1.024MB/sec}{1.024MB/sec} = 1 times ratio$
 
 setting the rates equal:
 
-$N*F_{aer}*20 = N*F_{crossover}*20$ \
-$F_{aer} = 50hz$ given  
-$F_{crossover} = \frac{N*50hz*20}{N*20}$  \
-$F_{crossover} = 50hz$
-
-
-
+$N*F_{aer}20 = NF_{crossover}20$ *  
+*$F_{aer} = 50hz$ given*  
+*$F_{crossover} = \frac{N50hz*20}{N*20}$    
+$F_{crossover} = 50hz$  
+  
+the current frequency is correct, both bandwidths are equal
