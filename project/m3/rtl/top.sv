@@ -146,6 +146,10 @@ module top #(
     // -- interface_module decoded API -------------------------------
     logic cfg_start;
     logic cfg_mode;
+    logic core_cfg_start;
+    logic stream_clr;
+    assign core_cfg_start = cfg_start && (cfg_mode == 1'b0);
+    assign stream_clr     = core_cfg_start;
     logic status_busy;
     logic status_done;
     logic weights_loaded;
@@ -249,6 +253,7 @@ module top #(
     ) u_ing_fifo (
         .clk      (clk),
         .rst      (rst),
+        .clr      (stream_clr),
         .wr_data  (ing_wr_word),
         .wr_valid (ing_wr_valid),
         .wr_ready (ing_wr_ready),
@@ -343,8 +348,6 @@ module top #(
     //     L cycles of internal pipeline.
     // cfg_start is still gated on mode == COMPUTE (a LOAD_WEIGHTS START
     // is for weight_store, not the core).
-    logic core_cfg_start;
-    assign core_cfg_start = cfg_start && (cfg_mode == 1'b0);
 
     compute_core_pipelined #(
         .DATA_W       (DATA_W),
@@ -384,6 +387,7 @@ module top #(
     ) u_eg_fifo (
         .clk      (clk),
         .rst      (rst),
+        .clr      (stream_clr),
         .wr_data  (eg_wr_word),
         .wr_valid (eg_wr_valid),
         .wr_ready (eg_wr_ready),
@@ -411,6 +415,7 @@ module top #(
     ) u_eg_skid (
         .clk     (clk),
         .rst     (rst),
+        .clr     (stream_clr),
         .s_data  (eg_rd_word),
         .s_valid (eg_rd_valid),
         .s_ready (eg_rd_ready),

@@ -1494,11 +1494,66 @@ re-read the eleven-phase iteration ledger above.
   iteration of the same playbook: the ingress FIFO read mux has the
   same fanout-cone shape as the egress mux that Phase 9's skid buffer
   fixed, so an ingress skid buffer is the natural Phase 12.
-- The **48 x 48 array** elaborates cleanly through yosys but is
-  larger than the OpenLane 2 default floorplan. M4 would need to
-  raise `FP_CORE_UTIL` headroom (or move to a multi-die / larger
-  template) before P&R will route.
+- The **48 x 48 array** elaborates cleanly through standalone yosys
+  (`synth -top top`, ~17 min wall) but blows up in the full OpenLane
+  2 yosys-synthesis flow at the `share` pass (pass 104 of
+  `synthesize.py`) because ~5.3M SAT-driven pairwise comparisons
+  across 2304 identical PE instances do not amortize. The pass has
+  not been observed to terminate within 11+ hours of wall-clock on
+  the development machine. M4 would need either
+  `SYNTH_KEEP_HIERARCHY_MODULES = ["pe_pipelined", "mul_bf16_p3",
+  "add_fp32_p4"]` to defang `share` (per-module instead of
+  flat-design candidate sets) or a smaller array entirely. Even with
+  `share` neutralized, downstream CTS and detailed routing on a
+  ~1.4M-flop netlist are estimated at 8 - 16 hours combined and
+  likely fail at routing congestion at the default `FP_CORE_UTIL`.
 - The **arithmetic pipeline is now the dominant flop-area cost**
   (~+15 % sequential cells vs the iter-0 baseline). Any further
   pipelining should be paid for with a measurable Fmax win, not
   added speculatively.
+
+### Final narrative
+
+I ran many synthesis iterations and am happy with the overall
+architecture of the design, but the scope needs adjustment.
+
+After successful synthesis at **4 x 4** I attempted **48 x 48** and
+found it is not practical on my development machine within the project
+timeline. The 4 x 4 design closes through OpenLane 2 yosys-synthesis +
+post-resizer STA in roughly 30 minutes; the 48 x 48 design wedged in
+yosys's `share` pass for 11+ hours due to ~5.3M SAT-driven pairwise
+comparisons across 2304 identical PE instances (see
+`runs/RUN_2026-05-25_00-03-15/06-yosys-synthesis/yosys-synthesis.log`,
+pass 104). Even with `share` defanged via `SYNTH_KEEP_HIERARCHY_*`,
+downstream CTS and detailed routing on a 1.4M-flop netlist are
+estimated at 8 - 16 hours combined and likely fail at routing
+congestion at the default `FP_CORE_UTIL`.
+
+For M4 I plan to:
+
+1. **Pivot to a smaller array** -- 16 x 16 (256 PEs, 153.6 GFLOP/s
+   peak at 300 MHz, 1.07 GB/s required ingress, 9 x AXIS headroom) or
+   a similarly manageable size that preserves the architectural
+   contract while staying well inside what sky130 + OpenLane 2 can
+   place and route in a reasonable wall-clock.
+2. **Use the Oregon compute cluster** for synthesis. The 48 x 48
+   yosys + OpenLane flow is CPU- and RAM-bound on my workstation
+   (peak observed: 9.2 GB RSS, 92 % single-core for hours); a
+   parallel-friendly host with more memory and faster cores would
+   convert the per-pass cost from "overnight" to "coffee break"
+   without changing the RTL or the flow.
+3. **Re-run the full stack tests** under cocotb at the new array
+   size. The host protocol (`tb/tb_top.py::host_load_weights`,
+   `host_compute_tile`, `axis_drain_n`) already parameterizes on
+   `M`, `N`, `WEIGHT_BEATS`, `ACT_BEATS`; the only edit is `M = N`
+   in the testbench top.
+
+Overall I am happy with the design itself -- weight-stationary
+systolic dataflow, BF16 multiply / FP32 accumulate, AXI4-Stream data
+plane, AXI4-Lite control plane, and the eleven-phase timing-closure
+playbook documented above all carry over verbatim. The lesson for
+M3 is that the array dimensions chosen in `architecture.md` were
+sized against an interface bandwidth target (7.11 GB/s @ AI=144),
+not against the implementation capacity of the chosen synthesis
+target (sky130 + OpenLane 2 on a single workstation). M4 will close
+that gap by reducing the array and increasing the compute budget.

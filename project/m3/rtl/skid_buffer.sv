@@ -37,6 +37,7 @@ module skid_buffer #(
 ) (
     input  logic              clk,
     input  logic              rst,
+    input  logic              clr,
 
     // Slave port (upstream producer)
     input  logic [WIDTH-1:0]  s_data,
@@ -63,6 +64,9 @@ module skid_buffer #(
             m_data     <= '0;
             skid_valid <= 1'b0;
             skid_data  <= '0;
+        end else if (clr) begin
+            m_valid    <= 1'b0;
+            skid_valid <= 1'b0;
         end else if (!m_valid || m_ready) begin
             // Primary slot can be (re)filled this cycle: it is either
             // empty, or downstream is taking the current beat.

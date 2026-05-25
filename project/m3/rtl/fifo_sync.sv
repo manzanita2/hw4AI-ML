@@ -38,6 +38,8 @@ module fifo_sync #(
 ) (
     input  logic              clk,
     input  logic              rst,
+    // Synchronous pointer reset (does not touch mem contents).
+    input  logic              clr,
 
     input  logic [WIDTH-1:0]  wr_data,
     input  logic              wr_valid,
@@ -71,6 +73,9 @@ module fifo_sync #(
     // ------------------------------------------------------------------
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
+            wr_ptr <= '0;
+            rd_ptr <= '0;
+        end else if (clr) begin
             wr_ptr <= '0;
             rd_ptr <= '0;
         end else begin
