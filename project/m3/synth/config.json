@@ -1,0 +1,35 @@
+{
+  "DESIGN_NAME": "top",
+
+  "VERILOG_FILES": [
+    "dir::../../m2/rtl/acc_fp32.sv",
+    "dir::../rtl/mul_bf16_p3.sv",
+    "dir::../rtl/add_fp32_p4.sv",
+    "dir::../rtl/pe_pipelined.sv",
+    "dir::../rtl/compute_core_pipelined.sv",
+    "dir::../rtl/fifo_sync.sv",
+    "dir::../rtl/weight_store.sv",
+    "dir::../rtl/load_seq.sv",
+    "dir::../rtl/interface.sv",
+    "dir::../rtl/skid_buffer.sv",
+    "dir::../rtl/top.sv"
+  ],
+
+  "CLOCK_PORT": "clk",
+  "CLOCK_PERIOD": 3.333,
+
+  "FP_CORE_UTIL": 35,
+  "PL_TARGET_DENSITY": 0.55,
+  "SYNTH_STRATEGY": "DELAY 0",
+
+  "DESIGN_IS_CORE": true,
+
+  "RUN_HEURISTIC_DIODE_INSERTION": true,
+  "GRT_REPAIR_ANTENNAS": true,
+
+  "comment_clock": "300 MHz (3.333 ns) target per architecture.md. Hit by replacing m2/{pe,mul_bf16,acc_fp32::add_fp32} with m3/{pe_pipelined, mul_bf16_p3, add_fp32_p4} (7-stage internal MAC pipeline; MAC_LATENCY = 8 since Phase 11). Iteration log lives in synthesis_notes.md: depth bump (1) -> FSM-broadcast staging (2) -> disjunct-trick to defeat opt_merge (3) -> async-reset RTL (4) -> egress skid (5) -> fifo_sync split + ws registered read (6) -> mul_bf16_p2 to mul_bf16_p3 B-half radix-4 split (7, current). Each iteration peeled off the next bottleneck reported by post-resizer STA.",
+  "comment_floorplan": "FP_CORE_UTIL = 55, PL_TARGET_DENSITY = 0.65 chosen after the depth-7 first attempt left u_core.state[1] (FSM bit driving all 16 PE clr_psum lines) on the critical path with most of the slack burned in 8+ buffer hops of wire delay rather than gate delay. Higher utilization shrinks the floorplan and the inter-PE wires that dominate that fanout. SYNTH_STRATEGY = 'DELAY 0' biases yosys toward shorter combinational chains at the cost of area.",
+  "comment_async_reset": "All m3/rtl/*.sv always_ff blocks use 'posedge clk or posedge rst' so dfflibmap maps to sky130 dfrtp_2 / sdfrtp_2 (async-reset DFFs) instead of dfxtp_2 + a D-mux gated by rst. Removes the global rst signal from the data path; rst is now a clock-tree-style net that only has to satisfy recovery/removal w.r.t. clk, not setup. Sky130 has no synchronous-reset DFF cell - 'sdfrtp' is scan + async reset, so any sync-reset RTL collapses into combinational reset on plain dfxtp.",
+  "comment_array_shape": "top.M = top.N = 48 (= 2304 PEs) per architecture.md. yosys stat ~6.4M cells; FP_CORE_UTIL lowered for P&R headroom.",
+  "comment_acc_fp32_inclusion": "m2/rtl/acc_fp32.sv is included only for its fp32_to_bf16 truncate module (used by compute_core_pipelined's drain serializer). The combinational add_fp32 in the same file is unused by the m3 datapath and should be DCE'd by yosys."
+}

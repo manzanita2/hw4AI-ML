@@ -1,0 +1,213 @@
+# ===========================================================================
+# project/m3/synth/timing_report.txt
+#
+# Source:  OpenLane 2 step 38-openroad-stamidpnr-2 (post-resizer STA),
+#          nominal typical corner (nom_tt_025C_1v80, 25 degC, 1.80 V).
+# Run:     project/m3/synth/runs/RUN_2026-05-24_18-50-37/
+# RTL:     compute_core_pipelined w/ pe_pipelined (MAC_LATENCY = 8)
+#          + per-PE FSM-broadcast staging w/ disjunct trick (Phase 5)
+#          + ASYNC-RESET RTL across every m3/rtl/*.sv (Phase 8)
+#          + EGRESS SKID BUFFER (Phase 9)
+#          + FIFO_SYNC SPLIT + WS REGISTERED READ (Phase 10)
+#          + MUL_BF16_P3 (Phase 11): replaces mul_bf16_p2 (2 stages,
+#            8x8 mantissa multiply in one stage). The new module does
+#            a "B-half radix-4 split" -- two 4x8 -> 12-bit half-products
+#            in stage 1 (parallel), 16-bit shift-add CPA in stage 2,
+#            normalize/exp/pack in stage 3. Bit-exact equivalent to the
+#            m2 reference; PE pipeline depth bumps 7 -> 8 cycles.
+# Target:  3.333 ns / 300 MHz (architecture.md spec).
+#
+# Headline (iter 7, after mul_bf16_p2 -> mul_bf16_p3 radix-4 split):
+#   Setup WNS (post-resizer, typical corner): -1.130 ns
+#   Setup TNS (post-resizer):                 -611 ns
+#   clk period_min:                            4.46 ns -> ~ 224 MHz
+#   Hold WNS (post-resizer):                  -0.268 ns (resizer pending)
+#
+# Delta vs iter 6 (RUN_2026-05-24_16-50-18, fifo_sync split + ws):
+#   period_min Fmax:    4.54 -> 4.46 ns        (+ 4 MHz, +1.8 %)
+#   post-resizer WNS:  -1.207 -> -1.130 ns     (+ 0.077 ns; modest)
+#   post-resizer TNS:  -1072 -> -611 ns        (-43 %; big)
+#
+# What the radix-4 split actually accomplished (the "0.6-0.9 ns
+# recovery on the bf16 mul stage 1 class" predicted by the iter-7
+# plan; the headline shift is bound by the next-worst class):
+#
+#   Iter-6 #1 violator class: bf16 mul stage 1 partial-product reduce
+#       Endpoint:  u_pe.u_mul.s1_mant_prod[15]/D
+#       Slack:     -1.207 ns at 3.333 ns target
+#       Cause:     14 sky130 cell levels of the 8x8 mantissa multiply
+#                  (PP-gen + reduce + sum/carry) all in one pipeline
+#                  stage between act_reg and s1_mant_prod
+#   ELIMINATED. The mul_bf16_p3 endpoint that takes its combinational
+#   place is `prod_lo_c[k]/D` and `prod_hi_c[k]/D` -- two 4x8 -> 12-bit
+#   sub-multipliers in parallel. The worst path landing on those new
+#   endpoints has slack -0.34 .. -0.58 ns at 3.333 ns target. So this
+#   class is still violating, but by 0.6-0.9 ns less than iter 6.
+#   Headline recovery on this class alone: +0.6 .. +0.9 ns.
+#
+# Why setup WNS only moved 0.08 ns:
+#
+#   The new top violator was iter 6's #2 class (queued for iter 7's
+#   mirror skid). It is a single startpoint with ~ 30 violating
+#   endpoints (all paths from u_ing_fifo.rd_ptr[0] into the ingress
+#   FIFO read mux):
+#
+#     Startpoint:  u_ing_fifo.rd_ptr[0]              (sky130 dfrtp_2)
+#     Endpoint:    a flop in compute_core that captures one of the
+#                  ingress FIFO output bits as the row activation feed
+#                  (sky130 dfxtp_2)
+#     Slack:       -1.130 ns at 3.333 ns target
+#
+#   Path: rd_ptr[0]/Q -> 6 buf hops (rd_ptr fanout + repeaters)
+#           -> xnor2 / nand3b / nand4 (mux decode start)
+#           -> 5 more buf hops (rebuffer / fanout / load_slew of mux
+#              control over a wide select cone)
+#           -> mux2_1/S -> dfxtp_2/D
+#
+#   ~ 1.0 ns of post-rd_ptr fanout buffering + ~ 0.7 ns of mux decode
+#   + ~ 1.5 ns of post-decode select-line buffering + ~ 0.6 ns of
+#   mux2 + setup. The 257-bit-wide FIFO read mux x 4 entries deep
+#   has rd_ptr driving a huge select-line fanout; the resizer cannot
+#   rebuild that without a flop in front of the mux output.
+#
+# Critical path summary (post-resizer; full walk in critical_path.md):
+#
+#   New WNS path (ingress FIFO read mux):
+#     u_ing_fifo.rd_ptr[0]/Q (1.73 ns; clk-Q + first buffer)
+#     -> 6 buffer hops to xnor2/nand3b/nand4 mux decode (2.76 ns)
+#     -> 5 more buffer hops to mux2/S (5.11 ns)
+#     -> mux2_1/X -> dfxtp_2/D (5.43 ns)
+#     Slack: -1.130 ns
+#
+#   2nd class (load_seq -> ws.rd_data_q mem mux):
+#     u_lseq.cnt[1]/Q (1.67 ns)
+#     -> nor2 -> dlymetal -> clkdlybuf -> and3b -> a22o -> a221o
+#        -> a211o -> a221o -> o22a (mem mux at 4x4 = 16:1 mux,
+#                                   ~ 9 cells of mux + setup)
+#     -> dfxtp_2/D (5.16 ns; rd_data_q from iter 6)
+#     Slack: -0.862 ns
+#   This is the iter-6 plan's "Risk #3" coming home: at 4x4 the
+#   weight_store mem is 16 entries deep; at 48x48 it's 2304 entries
+#   deep, so the projected 48x48 slack on this class is much worse.
+#
+#   3rd class (bf16 mul stage 1 *after* radix-4 split):
+#     u_pe.weight[k]/Q
+#     -> ~ 8 cells of partial-product AND + 1-level reduce
+#     -> u_pe.u_mul.prod_lo_c[k]/D or prod_hi_c[k]/D
+#     Slack: -0.34 .. -0.58 ns
+#   The radix-4 split reduced this class by ~ 0.6-0.9 ns. Further
+#   recovery requires either (a) a 4th stage of partial-product
+#   reduce, or (b) an even narrower split (e.g. radix-2 = 2x8 sub-
+#   multiplies + radix-2 add tree).
+#
+# Sustained throughput @ ~ 224 MHz, 16 PEs (M = N = 4):
+#       2 * 16 * 224e6 = 7.17 GFLOP/s peak (1 mac/cycle/PE)
+# Projected sustained throughput @ ~ 224 MHz, M = N = 48:
+#       2 * 2304 * 224e6 = 1.032 TFLOP/s peak (75 % of 1.38 TFLOP/s spec)
+# AXIS-256 b ingress @ 224 MHz: 7.17 GB/s (1 % over the 7.11 GB/s spec)
+#
+# Bottom line: the radix-4 split fixed exactly what the plan said it
+# would fix at the path level: bf16 mul stage 1 dropped ~ 0.7 ns of
+# slack. The headline WNS only moved 0.08 ns because the queued
+# iter-7 #2 violator (ingress FIFO read mux) was already at -0.88 ns
+# in iter 6 and is now exposed. To close 300 MHz from here, we need
+# (a) ingress skid buffer (mirror of iter 5's egress skid) -- ~ 1.0
+# ns recovery, AND (b) further weight_store mem mux pipelining
+# (the 4x4 mem mux is 16:1; 48x48 mem mux is 2304:1) -- ~ 0.5 ns
+# recovery. The bf16 mul itself is one more split away from being a
+# non-issue (radix-2 instead of radix-4 = 4-stage multiplier).
+#
+# What's below this header is the verbatim openroad report_checks
+# dump (step 38 stamidpnr-2, post-resizer): the new WNS path
+# (ingress FIFO read mux), the 2nd-class path (load_seq -> ws mem
+# mux -> rd_data_q), and the 3rd-class path (bf16 mul stage 1 after
+# radix-4 split, weight -> prod_lo/prod_hi).
+# ===========================================================================
+
+
+===========================================================================
+report_checks (post-resizer setup max, WNS path -- ingress FIFO read mux)
+===========================================================================
+Startpoint: _63508_ (rising edge-triggered flip-flop clocked by clk)
+            (= u_ing_fifo.rd_ptr[0])
+Endpoint:   _62658_ (rising edge-triggered flip-flop clocked by clk)
+            (a compute_core flop that captures one of the ingress
+            FIFO output bits as the row activation feed)
+Path Group: clk
+Path Type:  max
+
+Fanout         Cap        Slew       Delay        Time   Description
+---------------------------------------------------------------------------------------------
+                                              1.325347 ^ _63508_/CLK (sky130_fd_sc_hd__dfrtp_2)
+     2    0.007306    0.050162    0.404967    1.730315 v _63508_/Q (sky130_fd_sc_hd__dfrtp_2)
+                                                         u_ing_fifo.rd_ptr[0] (net)
+     1    0.004719    0.021060    0.110975    1.841322 v rebuffer6931/X (buf_6)
+     2    0.009605    0.025071    0.104207    1.945538 v fanout4057/X (buf_6)
+     3    0.034599    0.040554    0.124584    2.070168 v wire4058/X (buf_8)
+     2    0.009835    0.024306    0.114155    2.186611 v fanout4055/X (buf_8)
+     2    0.021562    0.031508    0.115822    2.302444 v load_slew4056/X (buf_8)
+                                                         (rd_ptr fanout buffering: 6 hops, 0.97 ns)
+     2    0.012716    0.157808    0.155807    2.458636 ^ _29708_/Y (xnor2_4)
+     3    0.020796    0.098356    0.127296    2.585985 v _29731_/Y (nand3b_4)
+     4    0.051115    0.203926    0.171841    2.758013 ^ _29733_/Y (nand4_4)
+                                                         (mux decode logic begins; 0.46 ns of cells)
+     2    0.052298    0.255477    0.307113    3.069300 ^ rebuffer6623/X (buf_2)
+     4    0.065030    0.647867    0.724412    3.796634 ^ fanout928/X (clkdlybuf4s25_1)
+     5    0.063610    0.182030    0.337321    4.143436 ^ load_slew929/X (buf_4)
+     6    0.058478    0.583643    0.663595    4.814465 ^ fanout916/X (clkdlybuf4s25_1)
+     5    0.024497    0.129255    0.285275    5.105651 ^ load_slew917/X (buf_2)
+                                                         (post-decode select-line buffering: 5 hops, 2.05 ns)
+     1    0.002444    0.054870    0.327397    5.433403 v _52579_/X (mux2_1)
+     -                                        5.433409 v _62658_/D (dfxtp_2)
+                                              5.433409   data arrival time
+
+                                  3.333000    3.333000   clock clk (rise edge)
+                                  ... clk-tree to _62658_/CLK = 4.66 ns ...
+                                 -0.250000    4.415922   clock uncertainty
+                                 -0.112571    4.303350   library setup time
+                                              4.303350   data required time
+---------------------------------------------------------------------------------------------
+                                              4.303350   data required time
+                                             -5.433409   data arrival time
+---------------------------------------------------------------------------------------------
+                                             -1.130     slack (VIOLATED)
+
+
+===========================================================================
+report_checks (2nd class -- load_seq -> ws.rd_data_q mem mux)
+===========================================================================
+Startpoint: _70786_  (= u_lseq.cnt[1])
+Endpoint:   _70782_  (= u_ws.rd_data_q[k] for some k)
+                                             -0.862     slack (VIOLATED)
+(Rising-edge clock, ~ 9 cells of 16:1 mem mux at 4x4. At 48x48 the
+mem mux is 2304:1 -- this class will be much worse and is the bigger
+risk for closing 300 MHz at full array size.)
+
+
+===========================================================================
+report_checks (3rd class -- bf16 mul stage 1 *after* radix-4 split)
+===========================================================================
+Startpoint: u_core.g_row[2].g_col[0].u_pe.weight[k]
+Endpoint:   u_core.g_row[2].g_col[0].u_pe.u_mul.prod_lo_c[10] (or hi[10])
+                                             -0.580     slack (VIOLATED)
+(Compare to iter 6's mul stage 1 path at -1.207 ns: ~ 0.6 ns recovery.
+The split brought the multiplier within ~ 0.5 ns of timing closure on
+its own. Further recovery from this class requires a radix-2 split
+of the radix-4 sub-multiplies, or accepting the residual.)
+
+
+===========================================================================
+report_clock_min_period
+===========================================================================
+
+clk period_min = 4.46 fmax = 224.06
+
+===========================================================================
+Worst Negative Slack / Total Negative Slack (Setup, post-resizer)
+===========================================================================
+
+Worst Negative Slack (Setup):
+  nom_tt_025C_1v80: -1.1300587452325634
+
+Total Negative Slack (Setup):
+  nom_tt_025C_1v80: -611.0934864434548

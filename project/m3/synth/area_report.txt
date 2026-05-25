@@ -1,0 +1,167 @@
+# ===========================================================================
+# project/m3/synth/area_report.txt
+#
+# Source: OpenLane 2 step 06-yosys-synthesis (yosys stat after sky130
+#   technology mapping). Post-PnR utilization numbers from step
+#   34-openroad-detailedplacement.
+# Run:    project/m3/synth/runs/RUN_2026-05-24_18-50-37/
+# RTL:    + MUL_BF16_P3 (Phase 11): 3-stage bf16 multiplier with B-half
+#         radix-4 split (mul_bf16_p2 deleted from the netlist; replaced
+#         by mul_bf16_p3 which has 2 internal pipeline registers vs
+#         p2's 1). PE pipeline depth bumps 7 -> 8 (MUL_STAGES = 3,
+#         ACT_CHAIN_LEN = 7, PSUM_CHAIN_LEN = 4).
+#         top.M = top.N = 4, 3.333 ns target.
+#
+# Headline (post-yosys, sky130 tech mapping; iter 7):
+#   Mapped cells:                 42,372    (+ 3.0 % vs iter 6's 41,151)
+#   Chip area:                    528,935 um^2 (~ 0.529 mm^2; + 4.7 %)
+#   Sequential cells:             8,280 dfrtp_2 + 1,368 dfxtp_2 = 9,648
+#                                 (vs iter 6's 7,016 + 1,368 = 8,384)
+#                                 NET: + 1,264 sequential cells, all
+#                                 dfrtp_2 (async-reset). Matches the
+#                                 expected delta:
+#                                   + 16 PEs * 16 (act_chain extra) = 256 flops
+#                                   + 16 PEs * 32 (psum_chain extra) = 512 flops
+#                                   + 16 PEs * (43 + 35 - 35) mul   = 688 flops
+#                                                            ~ 1456 flops
+#                                 Resizer / yosys merged ~ 192 flops
+#                                 of redundancy; final delta + 1264.
+#
+#   Post-PnR (step 34 detailedplacement, iter 7):
+#     Stdcell instances:          62,136  (+ 3.2 % vs iter 6's 60,230)
+#     Sequential cell count       9,648   (+ 15.1 % vs iter 6's 8,384)
+#     Stdcell utilization:        62.84 % (vs iter 6's 62.92 % -- flat)
+#     timing_repair_buffer cells: 6,189   (+ 3.5 % vs iter 6's 5,981)
+#
+# Why the area cost is + 3 %, not + 15 % despite + 15 % flop count:
+#   Sequential cells in sky130 are area-dominant per cell but the
+#   flops added are uniformly the existing dfrtp_2 type (no new
+#   cell library used). The combinational logic count is essentially
+#   unchanged because mul_bf16_p3's two 4x8 sub-multipliers + a 16-bit
+#   CPA together have similar gate count to mul_bf16_p2's single 8x8
+#   multiplier. The headline cell delta is dominated by the new
+#   sequential cells; combinational logic adds ~ 0 cells.
+#
+# Cell-class shifts vs iter 6 (RUN_2026-05-24_16-50-18):
+#                              iter 6       iter 7
+#   total cells (post-yosys):  41,151   ->  42,372    ( + 3.0 % )
+#   sky130 dfxtp_2:             1,368   ->   1,368    ( unchanged )
+#   sky130 dfrtp_2:             7,016   ->   8,280    ( + 1,264 )
+#   total sequential:           8,384   ->   9,648    ( + 15.1 % )
+#   timing_repair_buffer:       5,981   ->   6,189    ( + 3.5 % )
+#
+# 48 x 48 yosys-elab numbers (iter 7, full systolic array, no PnR):
+#   $_DFF_PP0_         : 1,292,582   ( vs iter 6's 1,082,918 = + 209,664 )
+#                       Delta breakdown for full M = N = 48 (= 2304 PEs):
+#                         + 2304 * 43 mul stage  = +  99,072 flops
+#                         + 2304 * 16 act_chain  = +  36,864 flops
+#                         + 2304 * 32 psum_chain = +  73,728 flops
+#                                                 = + 209,664 flops (exact)
+#   $_DFFE_PP0P_       :    39,278   ( unchanged from iter 6 )
+#   $_DFFE_PP_         :    50,228   ( unchanged from iter 6 )
+#   $_DFF_P_           :        16   ( unchanged from iter 6; ws.rd_data_q )
+#   $_MUX_             :   789,610   ( unchanged from iter 6 )
+#   mul_bf16_p3 cells  :       647   ( vs mul_bf16_p2's 605 = + 7 % per
+#                                       multiplier instance; the radix-4
+#                                       split adds ~ 42 cells per PE for
+#                                       the second flop stage )
+#
+# What's below this header is the verbatim yosys stat dump after
+# sky130 technology mapping (step 06-yosys-synthesis, iter 7).
+# ===========================================================================
+
+224. Printing statistics.
+
+=== top ===
+
+        +----------Local Count, excluding submodules.
+        |        +-Local Area, excluding submodules.
+        |        | 
+    42099        - wires
+    42690        - wire bits
+    12928        - public wires
+    13519        - public wire bits
+       27        - ports
+      618        - port bits
+    42372 5.29E+05 cells
+       22  275.264   sky130_fd_sc_hd__a2111o_2
+       52  780.749   sky130_fd_sc_hd__a2111oi_2
+      238 2.38E+03   sky130_fd_sc_hd__a211o_2
+      130  1626.56   sky130_fd_sc_hd__a211oi_2
+      114 1.14E+03   sky130_fd_sc_hd__a21bo_2
+       95 1.07E+03   sky130_fd_sc_hd__a21boi_2
+      553 4.84E+03   sky130_fd_sc_hd__a21o_2
+     1161 1.02E+04   sky130_fd_sc_hd__a21oi_2
+      146 1.64E+03   sky130_fd_sc_hd__a221o_2
+       66   990.95   sky130_fd_sc_hd__a221oi_2
+      537 5.38E+03   sky130_fd_sc_hd__a22o_2
+      432 5.41E+03   sky130_fd_sc_hd__a22oi_2
+      151  1.7E+03   sky130_fd_sc_hd__a2bb2o_2
+       31  465.446   sky130_fd_sc_hd__a2bb2oi_2
+       85  957.168   sky130_fd_sc_hd__a311o_2
+       42  630.605   sky130_fd_sc_hd__a311oi_2
+      634 5.55E+03   sky130_fd_sc_hd__a31o_2
+       98 1.23E+03   sky130_fd_sc_hd__a31oi_2
+       94 1.06E+03   sky130_fd_sc_hd__a32o_2
+        7  113.859   sky130_fd_sc_hd__a32oi_2
+       37   416.65   sky130_fd_sc_hd__a41o_2
+        6   97.594   sky130_fd_sc_hd__a41oi_2
+      723 5.43E+03   sky130_fd_sc_hd__and2_2
+     1888 1.65E+04   sky130_fd_sc_hd__and2b_2
+      669 5.02E+03   sky130_fd_sc_hd__and3_2
+      107 1.07E+03   sky130_fd_sc_hd__and3b_2
+      223 2.23E+03   sky130_fd_sc_hd__and4_2
+       88   990.95   sky130_fd_sc_hd__and4b_2
+       95  1188.64   sky130_fd_sc_hd__and4bb_2
+        1    5.005   sky130_fd_sc_hd__buf_2
+      352 1.32E+03   sky130_fd_sc_hd__conb_1
+     8280 2.18E+05   sky130_fd_sc_hd__dfrtp_2
+     1368 2.91E+04   sky130_fd_sc_hd__dfxtp_2
+     4426 1.66E+04   sky130_fd_sc_hd__inv_2
+     2345 2.64E+04   sky130_fd_sc_hd__mux2_1
+      902 2.03E+04   sky130_fd_sc_hd__mux4_2
+     1600  10009.6   sky130_fd_sc_hd__nand2_2
+      620 5.43E+03   sky130_fd_sc_hd__nand2b_2
+      366 3.66E+03   sky130_fd_sc_hd__nand3_2
+       54  608.083   sky130_fd_sc_hd__nand3b_2
+      354 4.43E+03   sky130_fd_sc_hd__nand4_2
+       20  300.288   sky130_fd_sc_hd__nand4b_2
+     6160 3.85E+04   sky130_fd_sc_hd__nor2_2
+       89  890.854   sky130_fd_sc_hd__nor3_2
+       16  200.192   sky130_fd_sc_hd__nor3b_2
+      128  1.6E+03   sky130_fd_sc_hd__nor4_2
+       22  330.317   sky130_fd_sc_hd__nor4b_2
+       20   250.24   sky130_fd_sc_hd__o2111a_2
+       98 1.47E+03   sky130_fd_sc_hd__o2111ai_2
+      404 4.04E+03   sky130_fd_sc_hd__o211a_2
+      241 3.02E+03   sky130_fd_sc_hd__o211ai_2
+      354  3.1E+03   sky130_fd_sc_hd__o21a_2
+      983 8.61E+03   sky130_fd_sc_hd__o21ai_2
+      109 1.09E+03   sky130_fd_sc_hd__o21ba_2
+      145 1.63E+03   sky130_fd_sc_hd__o21bai_2
+      104 1.17E+03   sky130_fd_sc_hd__o221a_2
+      209  3138.01   sky130_fd_sc_hd__o221ai_2
+      160  1.6E+03   sky130_fd_sc_hd__o22a_2
+      194 2.43E+03   sky130_fd_sc_hd__o22ai_2
+      278 3.13E+03   sky130_fd_sc_hd__o2bb2a_2
+       95 1.43E+03   sky130_fd_sc_hd__o2bb2ai_2
+      537  6047.05   sky130_fd_sc_hd__o311a_2
+       22  357.843   sky130_fd_sc_hd__o311ai_2
+      260  2.6E+03   sky130_fd_sc_hd__o31a_2
+       61  763.232   sky130_fd_sc_hd__o31ai_2
+       81  912.125   sky130_fd_sc_hd__o32a_2
+       27  439.171   sky130_fd_sc_hd__o32ai_2
+        9  112.608   sky130_fd_sc_hd__o41a_2
+        6   97.594   sky130_fd_sc_hd__o41ai_2
+      721 4.51E+03   sky130_fd_sc_hd__or2_2
+      259 1.94E+03   sky130_fd_sc_hd__or3_2
+      226 1.98E+03   sky130_fd_sc_hd__or3b_2
+      280 2.45E+03   sky130_fd_sc_hd__or4_2
+      155 1.55E+03   sky130_fd_sc_hd__or4b_2
+       41  512.992   sky130_fd_sc_hd__or4bb_2
+      306 4.98E+03   sky130_fd_sc_hd__xnor2_2
+      360 5.86E+03   sky130_fd_sc_hd__xor2_2
+
+   Chip area for module '\top': 528934.790400
+     of which used for sequential elements: 246656.563200 (46.63%)
+

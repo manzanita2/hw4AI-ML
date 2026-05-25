@@ -1,0 +1,80 @@
+# ===========================================================================
+# project/m3/synth/power_report.txt
+#
+# Source: OpenLane 2 step 38-openroad-stamidpnr-2 (post-resizer
+#   report_power), typical corner (nom_tt_025C_1v80). 0.5 uniform toggle
+#   activity; treat as a first-order budget, not a shippable number.
+# Run:    project/m3/synth/runs/RUN_2026-05-24_18-50-37/
+# RTL:    + MUL_BF16_P3 (Phase 11): 3-stage radix-4 split bf16 multiplier
+#         (mul_bf16_p2 was 2 stages). PE pipeline 7 -> 8.
+#         top.M = top.N = 4, 3.333 ns target.
+#
+# Headline (post-resizer at typical corner, iter 7):
+#   Total:           361.06 mW
+#   Sequential:      147.89 mW   ( 41.0 % )
+#   Combinational:   135.48 mW   ( 37.5 % )
+#   Clock tree:       77.69 mW   ( 21.5 % )
+#
+# Power changes vs iter 6 (RUN_2026-05-24_16-50-18):
+#   total:           329.23 -> 361.06 mW  ( + 9.7 % )
+#   sequential:      131.56 -> 147.89 mW  ( + 12.4 %; tracks the
+#                                                   + 15 % flop count
+#                                                   from the deeper
+#                                                   pipeline )
+#   combinational:   128.42 -> 135.48 mW  ( + 5.5 %; mainly the new
+#                                                  16-bit shift-add CPA
+#                                                  in mul_bf16_p3 stage 2
+#                                                  -- a small, mostly
+#                                                  switching-cone-based
+#                                                  delta. The 4x8
+#                                                  sub-multipliers in
+#                                                  stage 1 together have
+#                                                  similar combinational
+#                                                  count to the original
+#                                                  8x8 multiply )
+#   clock:            69.26 ->  77.69 mW  ( + 12.2 %; bigger clk tree to
+#                                                  serve the additional
+#                                                  flops )
+#
+# Power efficiency check (TFLOP/s/Watt, projected at M = N = 48):
+#   iter 6:   1.014 TFLOP/s / (329.23 mW * (2304/16))  = ~ 21.4 GFLOP/s/W
+#   iter 7:   1.032 TFLOP/s / (361.06 mW * (2304/16))  = ~ 19.8 GFLOP/s/W
+#   The ~ 7 % efficiency drop is the cost of buying a deeper pipeline:
+#   we paid more flops + more clock-tree distribution, and Fmax only
+#   went up by 4 MHz because the headline shifted to a different
+#   violator class. That is the textbook "deepening past the limit
+#   that another bottleneck cares about" outcome -- the right way
+#   to recover the efficiency is to fix the ingress FIFO mux + the
+#   weight_store mem mux pipelining (planned for iter 8) so the
+#   deeper-pipeline Fmax actually realizes.
+#
+# Note: openlane-2 still terminates at step 39 globalrouting with
+# [GRT-0116] congestion -- iter 7's stdcell utilization is 62.84 %,
+# essentially the same as iter 6. Independent of timing; defer until
+# the timing closes.
+#
+# What's below this header is the verbatim openroad report_power dump
+# at the typical corner (step 38 stamidpnr-2, post-resizer).
+# ===========================================================================
+
+
+===========================================================================
+ report_power
+============================================================================
+======================= nom_tt_025C_1v80 Corner ===================================
+
+Group                    Internal    Switching      Leakage        Total
+                            Power        Power        Power        Power (Watts)
+------------------------------------------------------------------------
+Sequential           1.353976e-01 1.249283e-02 1.123411e-07 1.478905e-01  41.0%
+Combinational        7.308891e-02 6.239040e-02 1.916300e-07 1.354795e-01  37.5%
+Clock                4.442790e-02 3.325815e-02 1.427046e-08 7.768606e-02  21.5%
+Macro                0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00   0.0%
+Pad                  0.000000e+00 0.000000e+00 0.000000e+00 0.000000e+00   0.0%
+------------------------------------------------------------------------
+Total                2.529148e-01 1.081415e-01 3.183335e-07 3.610566e-01 100.0%
+                            70.0%        30.0%         0.0%
+Writing metric power__internal__total: 0.25291481614112854
+Writing metric power__switching__total: 0.10814147442579270
+Writing metric power__leakage__total: 3.183334627010481e-7
+Writing metric power__total: 0.36105662584304810
