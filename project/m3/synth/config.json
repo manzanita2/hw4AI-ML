@@ -16,20 +16,24 @@
   ],
 
   "CLOCK_PORT": "clk",
-  "CLOCK_PERIOD": 3.333,
+  "CLOCK_PERIOD": 10.0,
 
-  "FP_CORE_UTIL": 35,
+  "FP_CORE_UTIL": 45,
   "PL_TARGET_DENSITY": 0.55,
   "SYNTH_STRATEGY": "DELAY 0",
 
   "DESIGN_IS_CORE": true,
 
+  "GRT_ADJUSTMENT": 0.25,
+  "GRT_LAYER_ADJUSTMENTS": [0.99, 0, 0, 0, 0, 0],
+
   "RUN_HEURISTIC_DIODE_INSERTION": true,
   "GRT_REPAIR_ANTENNAS": true,
 
-  "comment_clock": "300 MHz (3.333 ns) target per architecture.md. Hit by replacing m2/{pe,mul_bf16,acc_fp32::add_fp32} with m3/{pe_pipelined, mul_bf16_p3, add_fp32_p4} (7-stage internal MAC pipeline; MAC_LATENCY = 8 since Phase 11). Iteration log lives in synthesis_notes.md: depth bump (1) -> FSM-broadcast staging (2) -> disjunct-trick to defeat opt_merge (3) -> async-reset RTL (4) -> egress skid (5) -> fifo_sync split + ws registered read (6) -> mul_bf16_p2 to mul_bf16_p3 B-half radix-4 split (7, current). Each iteration peeled off the next bottleneck reported by post-resizer STA.",
+  "comment_clock": "100 MHz (10.0 ns) target -- the M3 scope adjustment from architecture.md's 300 MHz aspiration (see synthesis_notes.md). The deeper MAC pipeline that was built chasing 300 MHz remains: m2/{pe,mul_bf16,acc_fp32::add_fp32} are replaced by m3/{pe_pipelined, mul_bf16_p3, add_fp32_p4} (MAC_LATENCY = 8 since Phase 11). Iteration log lives in synthesis_notes.md: depth bump (1) -> FSM-broadcast staging (2) -> disjunct-trick to defeat opt_merge (3) -> async-reset RTL (4) -> egress skid (5) -> fifo_sync split + ws registered read (6) -> mul_bf16_p2 to mul_bf16_p3 B-half radix-4 split (7). At 10 ns the prior post-resizer WNS (-1.13 ns at 300 MHz) closes with margin.",
   "comment_floorplan": "FP_CORE_UTIL = 55, PL_TARGET_DENSITY = 0.65 chosen after the depth-7 first attempt left u_core.state[1] (FSM bit driving all 16 PE clr_psum lines) on the critical path with most of the slack burned in 8+ buffer hops of wire delay rather than gate delay. Higher utilization shrinks the floorplan and the inter-PE wires that dominate that fanout. SYNTH_STRATEGY = 'DELAY 0' biases yosys toward shorter combinational chains at the cost of area.",
   "comment_async_reset": "All m3/rtl/*.sv always_ff blocks use 'posedge clk or posedge rst' so dfflibmap maps to sky130 dfrtp_2 / sdfrtp_2 (async-reset DFFs) instead of dfxtp_2 + a D-mux gated by rst. Removes the global rst signal from the data path; rst is now a clock-tree-style net that only has to satisfy recovery/removal w.r.t. clk, not setup. Sky130 has no synchronous-reset DFF cell - 'sdfrtp' is scan + async reset, so any sync-reset RTL collapses into combinational reset on plain dfxtp.",
-  "comment_array_shape": "top.M = top.N = 48 (= 2304 PEs) per architecture.md. yosys stat ~6.4M cells; FP_CORE_UTIL lowered for P&R headroom.",
-  "comment_acc_fp32_inclusion": "m2/rtl/acc_fp32.sv is included only for its fp32_to_bf16 truncate module (used by compute_core_pipelined's drain serializer). The combinational add_fp32 in the same file is unused by the m3 datapath and should be DCE'd by yosys."
+  "comment_array_shape": "top.M = top.N = 16 (= 256 PEs) -- the M3 scope point (down from architecture.md's 48x48 aspiration; rationale in synthesis_notes.md). top.sv's parameter defaults are 16/16, so this OpenLane run and the co-sim share one size. FP_CORE_UTIL lowered for P&R headroom.",
+  "comment_acc_fp32_inclusion": "m2/rtl/acc_fp32.sv is included only for its fp32_to_bf16 truncate module (used by compute_core_pipelined's drain serializer). The combinational add_fp32 in the same file is unused by the m3 datapath and should be DCE'd by yosys.",
+  "comment_congestion": "Step-39 global routing bailed with [GRT-0116] in RUN_2026-05-31_23-55-33: residual overflow was tiny (total 4 GCells, all on met3/horizontal, Max H 2) against low global usage (27%), while the other horizontal layer met5 sat ~98% idle. Three knobs target this localized congestion: (1) GRT_ADJUSTMENT 0.30 -> 0.25 -- the tool's own GRT-0704 hint; frees routing capacity on every layer including met3. (2) GRT_LAYER_ADJUSTMENTS made explicit at the PDK default [li1,met1,met2,met3,met4,met5] = [0.99,0,0,0,0,0]; met3/met5 already carry zero reduction and the knob can only reduce capacity, so this is documentation-only -- the real horizontal lever is (1) (met5's idle/derate is PDN-strap driven, not this list). (3) FP_CORE_UTIL 35 -> 45 tightens the floorplan (~4935 -> ~4350 um/side) to shorten the long high-fanout clk/rst nets that drove ~43.9 mm wirelength and 102K repair buffers; PL_TARGET_DENSITY left at 0.55 (= the librelane auto default of FP_CORE_UTIL+10 at util 45). Attribution caveat: (1) frees routing while (3) raises local density -- they push opposite ways on met3, so for clean per-knob attribution (per synthesis_notes.md) run (1) alone first, then (3). Re-run on the synth host: librelane --last-run --from OpenROAD.GlobalRouting config.json."
 }

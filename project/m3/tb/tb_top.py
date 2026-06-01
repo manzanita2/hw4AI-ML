@@ -7,6 +7,11 @@ FIFO internals. The grader's "co-simulation bypasses the interface"
 failure mode is the most common M3 Not Yet, and this harness is the
 firewall against it.
 
+Design scope: M = N = 16 array @ 100 MHz (10 ns clock). M / N / the
+clock period are single-sourced from the Makefile via the environment
+and default to top.sv's parameter defaults (see the DUT parameters
+block below).
+
 -----------------------------------------------------------------
 Tests
 -----------------------------------------------------------------
@@ -18,13 +23,15 @@ Tests
   test_axil_scratch_loopback
       Write+read SCRATCH @ 0x10. Same shape as the M2 test, ported
       over so a regression in the regfile during the M3 extension
-      shows up here, not buried in the conv test.
+      shows up here, not buried in the GEMM test.
 
-  test_raft_conv_tiled_e2e   (HEADLINE)
-      Tile a small RAFT-style 1x1 projection conv across many 4x4
-      GEMM tile calls driven entirely through the AXI4-Lite + AXI4-
-      Stream interfaces. Compares the assembled output map to a
-      numpy bf16 reference and prints PASS/FAIL.
+  test_gemm_tile_e2e   (HEADLINE)
+      One im2col -> GEMM tile of the M1 dominant kernel
+      (`aten::mkldnn_convolution`, mapped to the array as im2col ->
+      GEMM per project/architecture.md): a K=M reduction by N output
+      columns, driven entirely through the AXI4-Lite + AXI4-Stream
+      pins. Compares all N outputs to an independent numpy/python
+      bf16 reference and prints PASS/FAIL.
 
   test_weight_reuse_two_activation_tiles
       Load weights once; run two COMPUTE tiles with different
@@ -36,38 +43,24 @@ Tests
       the egress FIFO holds and no result is dropped.
 
 -----------------------------------------------------------------
-Conv shape (RAFT-style 1x1 projection, scaled for sim time)
------------------------------------------------------------------
-Cin = 8, Cout = 8, kernel = 1, stride = 1, padding = 0, H = W = 2.
-This shape mirrors the 1x1 channel-projection convs used between
-RAFT-large encoder stages (real RAFT-large uses Cin / Cout in the
-~96 - 256 range; we scale down so the cocotb run finishes in
-seconds, not hours, and the sim_log fits in a committed deliverable).
-The structure is what matters here: K-tiling along the reduction
-axis, M-row tiling, N-column tiling, weights resident across
-multiple activation tiles.
-
------------------------------------------------------------------
 GEMM mapping (compute_core contract: y[N] = x[K] * B[K][N])
 -----------------------------------------------------------------
-  W : [Cout, Cin*Kh*Kw]    (Cout=8, K_total=8 -> 2x2 tiles of 4x4)
-  X : [Cin*Kh*Kw, H*W]     (K_total=8, HW=4   -> 2x1 tiles of 4x4)
-  y : [Cout, H*W]          (Cout=8, HW=4      -> 2x1 tiles of 4x4)
+The headline test exercises a single im2col -> GEMM tile at the array
+scope M = N = LANES-multiple:
 
-Per output block (i_blk, j_blk) of shape M x N:
-    for each k_blk:
-        load weights = X[k_blk*K:(k_blk+1)*K, j_blk*N:(j_blk+1)*N]
-                       (a 4x4 slab of X, packed row-major into
-                        weight_store)
-        for each row r in 0..M-1:
-            x = W[i_blk*M + r, k_blk*K:(k_blk+1)*K]   (4 bf16)
-            COMPUTE -> y_partial[N] = x . X_slab
-            output[i_blk*M + r, j_blk*N:(j_blk+1)*N] += y_partial
+  B : [M, N]   im2col-packed weight slab, streamed once into
+               weight_store (WEIGHT_BEATS beats of LANES bf16 lanes).
+  x : [M]      one activation column (ACT_BEATS beats).
+  y : [N]      y[n] = sum_k quantize(x[k]) * quantize(B[k][n]), bf16.
 
-The order is hoisted so each weight tile is loaded once and reused
-for M different activation rows.
+This is the inner GEMM tile a full im2col convolution decomposes into
+(K-tiling on the reduction axis, N-column tiling, weights resident
+across multiple activation columns). The weight-reuse test then proves
+the weight slab stays resident across two activation columns, i.e. the
+weight-stationary dataflow promised in project/architecture.md.
 """
 
+import os
 import struct
 import random
 
@@ -77,14 +70,18 @@ from cocotb.triggers import ClockCycles, RisingEdge, Timer
 
 
 # -----------------------------------------------------------------------
-# DUT parameters (must match top.sv defaults)
+# DUT parameters
 # -----------------------------------------------------------------------
-CLK_PERIOD_NS = 10  # 100 MHz sim
+# M / N / CLK are single-sourced from the Makefile via the environment
+# (defaults match top.sv's parameter defaults). Icarus cannot override
+# top params from the CLI, so the elaborated RTL uses top.sv's defaults;
+# these env values MUST agree with them or the GEMM test FAILs loudly.
+CLK_PERIOD_NS = int(os.environ.get("CLK_PERIOD_NS", "10"))  # 10 ns -> 100 MHz
 DATA_W      = 16
 OUT_W       = 16
 LANES       = 16
-M           = 48
-N           = 48
+M           = int(os.environ.get("M", "16"))
+N           = int(os.environ.get("N", "16"))
 AXIS_DATA_W = 256
 
 OUT_MASK    = (1 << OUT_W) - 1
@@ -92,8 +89,8 @@ DATA_MASK   = (1 << DATA_W) - 1
 AXIS_MASK   = (1 << AXIS_DATA_W) - 1
 
 # AXIS beat geometry (must match weight_store / compute_core_pipelined)
-WEIGHT_BEATS = (M * N + LANES - 1) // LANES   # 144 @ 48x48 / LANES=16
-ACT_BEATS    = (M + LANES - 1) // LANES       # 3 @ M=48 / LANES=16
+WEIGHT_BEATS = (M * N + LANES - 1) // LANES   # 16 @ 16x16 / LANES=16
+ACT_BEATS    = (M + LANES - 1) // LANES        # 1 @ M=16 / LANES=16
 
 # Address map (see project/m3/rtl/interface.sv)
 ADDR_CTRL    = 0x00
@@ -412,7 +409,7 @@ async def test_axil_scratch_loopback(dut):
 
 
 # =======================================================================
-# Test 3 (HEADLINE): 48x48 GEMM end-to-end
+# Test 3 (HEADLINE): im2col -> GEMM tile end-to-end
 # =======================================================================
 def _gemm_row_reference(x: list[float], B: list[list[float]]) -> list[float]:
     """y[n] = sum_k quantize(x[k]) * quantize(B[k][n]), bf16 output."""
@@ -433,16 +430,28 @@ def _make_weight_matrix(seed: int) -> list[list[float]]:
 
 
 @cocotb.test()
-async def test_gemm_48x48_e2e(dut):
-    """Load a full 48x48 weight matrix, run one COMPUTE tile, compare
-    all N=48 outputs against a bf16-accurate software reference."""
+async def test_gemm_tile_e2e(dut):
+    """HEADLINE: one im2col -> GEMM tile of the M1 dominant kernel.
+
+    The M1 profiling target is `aten::mkldnn_convolution` (~53% CPU),
+    mapped to the array as im2col -> GEMM (see project/architecture.md).
+    This test drives one such GEMM tile -- a K=M reduction by N output
+    columns -- end to end through the AXI4-Lite + AXI4-Stream pins only
+    (no direct compute-core probes), at the M=N=16 array scope.
+
+    Load a full MxN weight matrix (the im2col-packed weight slab), run
+    one COMPUTE tile over an M-length activation column, and compare all
+    N outputs against an independent bf16-accurate software reference
+    (`_gemm_row_reference`, NOT a prior DUT run). Prints one PASS/FAIL.
+    """
     cocotb.start_soon(Clock(dut.clk, CLK_PERIOD_NS, unit="ns").start())
     _zero_all_inputs(dut)
     await _reset(dut)
 
     dut._log.info(
-        f"GEMM: M=N={M}, LANES={LANES}, "
-        f"WEIGHT_BEATS={WEIGHT_BEATS}, ACT_BEATS={ACT_BEATS}"
+        f"GEMM tile: M=N={M}, LANES={LANES}, "
+        f"WEIGHT_BEATS={WEIGHT_BEATS}, ACT_BEATS={ACT_BEATS}, "
+        f"CLK={CLK_PERIOD_NS}ns ({1000//CLK_PERIOD_NS} MHz)"
     )
 
     B = _make_weight_matrix(0xC0FFEE)
@@ -465,10 +474,10 @@ async def test_gemm_48x48_e2e(dut):
                 f"  MISS y[{n}]: dut={dut_v} (0x{bf16_bits(dut_v):04X}) "
                 f"ref={ref_v} (0x{bf16_bits(ref_v):04X})"
             )
-        assert False, f"gemm 48x48: {len(fails)}/{N} mismatches"
+        assert False, f"gemm {M}x{N} tile: {len(fails)}/{N} mismatches"
 
     dut._log.info(
-        f"PASS: 48x48 GEMM -- all {N} outputs bit-exact vs bf16 reference"
+        f"PASS: {M}x{N} GEMM tile -- all {N} outputs bit-exact vs bf16 reference"
     )
 
 

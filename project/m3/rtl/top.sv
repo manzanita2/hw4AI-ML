@@ -85,8 +85,9 @@
 // -------------------------------------------------------------------
 // Parameterization
 // -------------------------------------------------------------------
-// Bring-up defaults at M = N = 48 per architecture.md (48 x 48 PEs,
-// 2304 MACs/cycle). LANES = 16 matches the 256-bit AXIS payload.
+// Bring-up / sim+synth defaults at M = N = 16 (256 PEs) -- the M3
+// scope adjustment from architecture.md's 48 x 48 aspirational array
+// (see synthesis_notes.md). LANES = 16 matches the 256-bit AXIS payload.
 
 module top #(
     parameter int AXIS_DATA_W = 256,
@@ -97,8 +98,8 @@ module top #(
     parameter int OUT_W       = 16,
     parameter int LANES       = 16,
 
-    parameter int M           = 48,
-    parameter int N           = 48,
+    parameter int M           = 16,
+    parameter int N           = 16,
 
     // FIFO depths
     parameter int INGRESS_DEPTH = 16,

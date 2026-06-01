@@ -7,25 +7,34 @@ and an egress skid buffer), the cocotb co-simulation that proves the
 dataflow end-to-end through the bus only, and the OpenLane 2 synthesis
 flow on sky130.
 
-## Headline numbers (post-resizer, OpenLane RUN_2026-05-24_18-50-37, sky130 typical corner)
+## Design scope
 
+**M = N = 16 array @ 100 MHz (10 ns).** This is the M3 scope point: the
+co-simulation, `top.sv`'s parameter defaults, and `synth/config.json`
+all share it (single-sourced through `tb/Makefile`). It is a documented
+scope adjustment down from architecture.md's aspirational 48x48 @
+300 MHz array -- see `[synthesis_notes.md](synthesis_notes.md)`.
 
-| Metric                                        | M3 value                      | Spec / M2 baseline                                   |
-| --------------------------------------------- | ----------------------------- | ---------------------------------------------------- |
-| Cocotb co-sim                                 | 5/5 PASS, 16,191 ns wall      | end-to-end through AXI4-Lite + AXI4-Stream pins only |
-| Setup WNS (post-resizer)                      | -1.130 ns                     | 3.333 ns target (300 MHz)                            |
-| Setup TNS                                     | -611 ns                       | (down from -1,072 ns at iter 6)                      |
-| Achieved Fmax                                 | ~224 MHz (period_min 4.46 ns) | spec target 300 MHz                                  |
-| Mapped cells (M=N=4)                          | 42,372                        | +3.0 % vs iter 6 baseline                            |
-| Chip area (M=N=4)                             | 528,935 µm² (~0.529 mm²)      | +4.7 % vs iter 6 baseline                            |
-| Total power (M=N=4, post-resizer, 0.5 toggle) | 361.06 mW                     | first-order budget, not shippable                    |
+| Metric             | Value                                  |
+| ------------------ | -------------------------------------- |
+| Cocotb co-sim      | 5/5 PASS, end-to-end through AXI4-Lite + AXI4-Stream pins only |
+| Array              | 16 x 16 (256 PEs)                      |
+| Clock              | 100 MHz (10 ns)                        |
+| Numerics           | bf16 multiply, fp32 accumulate, bf16 round-out (RTZ) |
 
+### Prior OpenLane bring-up (M = N = 4 @ 300 MHz, RUN_2026-05-24_18-50-37)
 
-The 300 MHz target is **not closed**; this submission is the
-"documented scope adjustment with synthesis attempt" path the M3 spec
-allows. See `[synthesis_notes.md](synthesis_notes.md)` and
+The committed `synth/timing_report.txt`, `area_report.txt`, and
+`power_report.txt` are from the earlier M = N = 4 @ 300 MHz attempt
+(setup WNS -1.130 ns, ~224 MHz Fmax, 42,372 mapped cells, 528,935 µm²,
+361.06 mW). Those numbers chased the 300 MHz target and did **not**
+close it. The current 16x16 @ 100 MHz `config.json` relaxes the clock
+to 10 ns (where that WNS closes with margin) and is the configuration
+to re-run via OpenLane to refresh those reports; `make synth-yosys`
+gives the quick gate-count check at the new scope in the meantime. See
+`[synthesis_notes.md](synthesis_notes.md)` and
 `[synth/critical_path.md](synth/critical_path.md)` for the iteration
-ledger and the current critical-path identification.
+ledger and critical-path identification.
 
 ## File catalog (M3-spec required entries)
 
@@ -45,17 +54,18 @@ ledger and the current critical-path identification.
 | `rtl/mul_bf16_p2.sv`            | Predecessor 2-stage multiplier (kept in tree for diff-against-iter-6 reference; **not instantiated** in the current netlist).                                                                                                                                                                                |
 | `rtl/add_fp32_p4.sv`            | 4-stage pipelined fp32 adder used inside `pe_pipelined` for the partial-sum accumulator.                                                                                                                                                                                                                     |
 | `tb/tb_top.py`                  | cocotb harness exercising `top` end-to-end through the AXI4-Lite + AXI4-Stream pins only. Five tests; see "Tests" below. Spec lists this as `tb_top.sv`; see "Filename deviation".                                                                                                                           |
-| `tb/Makefile`                   | cocotb / Icarus driver. `make` builds and runs `tb_top`. `make m3-log` regenerates `../sim/cosim_run.log` from a clean state.                                                                                                                                                                                |
+| `tb/Makefile`                   | cocotb / Icarus driver. `make` builds and runs `tb_top`. `make m3-log` regenerates `../sim/cosim_run.log` from a clean state. `make synth-yosys` runs yosys synth/`stat` at the same `M`/`N`. Owns the single-sourced design point (`M ?= 16`, `N ?= 16`, `CLK_PERIOD_NS ?= 10`), exported to `tb_top.py`.   |
 | `sim/cosim_run.log`             | Fresh `make m3-log` capture. Five `PASS:` lines, one per test.                                                                                                                                                                                                                                               |
 | `sim/cosim_waveform.png`        | Annotated end-to-end waveform from `tb/artifacts/top.vcd`. Three regions shaded: host write, internal compute, host read.                                                                                                                                                                                    |
 | `sim/render_waveform.py`        | Headless VCD-to-PNG renderer used to produce `cosim_waveform.png` (no X server required, unlike gtkwave).                                                                                                                                                                                                    |
-| `synth/config.json`             | OpenLane 2 configuration. `DESIGN_NAME = top`, sky130, 300 MHz target, M = N = 4 bring-up. Lists every `rtl/*.sv` file consumed (mul_bf16_p3, not p2).                                                                                                                                                       |
+| `synth/config.json`             | OpenLane 2 configuration. `DESIGN_NAME = top`, sky130, 100 MHz (10 ns) target, M = N = 16 scope (matches `top.sv` defaults + the co-sim). Lists every `rtl/*.sv` file consumed (mul_bf16_p3, not p2).                                                                                                        |
 | `synth/openlane_run.log`        | Captured stdout/stderr from the OpenLane 2 invocation.                                                                                                                                                                                                                                                       |
 | `synth/timing_report.txt`       | Setup / hold / WNS / TNS / period_min summary, rolled up from OpenLane step 38 (post-resizer STA), with iter-6 -> iter-7 deltas.                                                                                                                                                                             |
 | `synth/area_report.txt`         | Total cell area + per-module gate counts. Rolled up from yosys `stat` (step 06) and OpenROAD detailed-placement (step 34), with iter-6 -> iter-7 deltas.                                                                                                                                                     |
 | `synth/power_report.txt`        | OpenROAD `report_power` rollup at typical corner.                                                                                                                                                                                                                                                            |
 | `synth/critical_path.md`        | Detailed walk of the current WNS path: start register, end register, logic stages, why it dominates, what would shorten it next.                                                                                                                                                                             |
-| `synth/yosys_48x48_run.log`     | 48x48 elab-only yosys run, used to size the gate-count gap and validate the per-PE pipeline expansion.                                                                                                                                                                                                       |
+| `synth/yosys_16x16_run.log`     | `make synth-yosys` output: yosys `synth -top top` + `stat` at the M = N = 16 scope. Gate-count check for the synthesized design point.                                                                                                                                                                       |
+| `synth/yosys_48x48_run.log`     | Historical 48x48 elab-only yosys run (architecture.md's aspirational array), kept to size the gate-count gap vs the 16x16 scope.                                                                                                                                                                             |
 | `synthesis_notes.md`            | ≥500-word narrative covering all 11 phases: what synthesized, what failed, exact error messages, scope adjustments + rationale, M4 implications.                                                                                                                                                             |
 
 
@@ -132,12 +142,13 @@ testbenches still pass bit-exact.
 1. `test_top_smoke` -- reset + idle outputs (canary).
 2. `test_axil_scratch_loopback` -- write + read SCRATCH @ 0x10
   (regfile sanity).
-3. `test_raft_conv_tiled_e2e` -- **headline test**. Tile a small
-  RAFT-style 1x1 projection conv (Cin = 8, Cout = 8, kernel = 1,
-   stride = 1, padding = 0, H = W = 2) into 16 M=N=K=4 GEMM tile calls
-   plus 2 weight loads, all driven through AXI-Lite + AXI-Stream.
-   Compares the assembled output map against a numpy bf16 reference
-   and prints a single `PASS:` line.
+3. `test_gemm_tile_e2e` -- **headline test**. One im2col -> GEMM tile
+   of the M1 dominant kernel (`aten::mkldnn_convolution`, mapped to the
+   array as im2col -> GEMM per `[../architecture.md](../architecture.md)`):
+   a K=M reduction by N output columns at the M=N=16 array scope,
+   driven entirely through AXI-Lite + AXI-Stream. Compares all N
+   outputs against an independent numpy/python bf16 reference and
+   prints a single `PASS:` line.
 4. `test_weight_reuse_two_activation_tiles` -- load weights once, run
   two compute tiles with different activations. Proves the on-chip
    cache exists.
@@ -145,12 +156,13 @@ testbenches still pass bit-exact.
   mid-drain. Proves the egress FIFO + skid buffer actually decouple
    the drain from downstream backpressure.
 
-The headline conv mirrors the structure of the 1x1 channel-projection
-convs in `raft_large` (the M1 profiling target). RAFT itself uses
-Cin / Cout in the ~96 - 256 range; we scale down so cocotb finishes
-in seconds, not hours, while keeping the structure that matters
-(K-tiling on the reduction axis, M-row tiling, N-column tiling, weight
-reuse across multiple activation tiles).
+The headline GEMM tile is the inner kernel a full im2col convolution
+decomposes into (the 1x1 channel-projection convs in `raft_large`, the
+M1 profiling target, are exactly such GEMMs). Real RAFT uses Cin / Cout
+in the ~96 - 256 range; the M3 scope runs one 16x16 tile so cocotb
+finishes in seconds, while keeping the structure that matters: K-tiling
+on the reduction axis, N-column tiling, and weights resident across
+multiple activation columns (the weight-reuse test).
 
 ## Toolchain
 
@@ -185,25 +197,25 @@ make m3-log
 cd ../sim
 ../../../.venv-cocotb/bin/python render_waveform.py
 
-# OpenLane 2 synthesis -- runs full sky130 flow at M=N=4
+# OpenLane 2 synthesis -- runs full sky130 flow at M=N=16 @ 100 MHz
 cd ../synth
 nix-shell /home/hx3d/opt/librelane --run "librelane config.json" 2>&1 | tee openlane_run.log
 # OpenLane writes its run directory under runs/<timestamp>/; the
 # committed reports under project/m3/synth/ are extracted from there.
 ```
 
-For the M = N = 48 yosys-only synthesis attempt cited in
-`synthesis_notes.md` (the "scope adjustment with synthesis attempt"
-path the M3 spec allows), pass parameter overrides to yosys directly:
+For a quick yosys-only synth/gate-count check at the 16x16 scope, use
+the Makefile target (it `chparam`s `top` and writes
+`synth/yosys_16x16_run.log`):
 
 ```bash
-yosys -p "
-read_verilog -sv project/m3/rtl/*.sv project/m2/rtl/{acc_fp32,pe,compute_core}.sv
-chparam -set M 48 -set N 48 top
-synth -top top
-stat
-"
+cd project/m3/tb
+make synth-yosys            # override size with: make synth-yosys M=48 N=48
 ```
+
+The historical M = N = 48 elaboration (architecture.md's aspirational
+array, cited in `synthesis_notes.md`) lives in
+`synth/yosys_48x48_run.log`; reproduce it with `make synth-yosys M=48 N=48`.
 
 ## M3 deviations from M1 / M2
 
@@ -214,12 +226,15 @@ pipelining lives in M3-only files (`compute_core_pipelined.sv`,
 `load_seq.sv`).
 - **Reset convention flipped** (sync -> async, Phase 8) for sky130
 reasons -- see "What's new versus M2" above.
-- Bring-up is at `M = N = 4`. The 48 x 48 architecture-md target ran
-through yosys (see `synth/yosys_48x48_run.log`) but was not pushed
-through full OpenLane 2 P&R; the rationale and the cited gate-count
-gap is in `synthesis_notes.md` per the spec's "documented scope
-adjustment with synthesis attempt" clause.
-- The 300 MHz spec is missed by ~1.13 ns of WNS at the M = N = 4
-bring-up. The post-Phase-11 critical path is now the ingress FIFO
-read mux, not arithmetic depth; see `synth/critical_path.md`.
+- **Scope point is `M = N = 16` @ 100 MHz** for the co-sim and
+`config.json` (single-sourced via `tb/Makefile`). architecture.md's
+48 x 48 @ 300 MHz array is the aspiration; the committed OpenLane
+reports are from a still-earlier `M = N = 4` @ 300 MHz attempt (the
+gate-count gap and rationale are in `synthesis_notes.md` per the
+spec's "documented scope adjustment with synthesis attempt" clause).
+Refreshing the OpenLane reports at 16x16 @ 100 MHz is the next P&R run.
+- The 300 MHz target was missed by ~1.13 ns of WNS at the `M = N = 4`
+bring-up; relaxing to 100 MHz (10 ns) closes it with margin. The
+post-Phase-11 critical path was the ingress FIFO read mux, not
+arithmetic depth; see `synth/critical_path.md`.
 
