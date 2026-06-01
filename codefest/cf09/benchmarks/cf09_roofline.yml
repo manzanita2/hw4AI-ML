@@ -1,0 +1,23 @@
+# CF09 roofline: accelerator (PROJECTED path).
+# Roofs belong to the accelerator design, not the CPU baseline.
+#   peak compute  = 16x16 core, 512 FLOP/cycle x 220 MHz = 112.64 GFLOP/s  (PROJECTED, C1 / cman_ai_analysis.md)
+#   peak BW       = AXI4-Stream interface, 9.6 GB/s       (PROJECTED, project/m1/interface_selection.md)
+#   ridge AI      = 112.64 / 9.6 = 11.7 FLOP/byte
+# Accelerator point uses C1 arithmetic intensity (with GEMM weight reuse) = 288 FLOP/byte.
+hardware:
+  peak_compute_gflops: 112.64
+  peak_bandwidth_name: "AXI4-Stream IF"
+  peak_bandwidth_gbs: 9.6
+
+plot:
+  title: "CLLM Accelerator Roofline (PROJECTED)"
+  output: "roofline_plot.png"
+  ai_min: 0.1
+  ai_max: 1000
+
+points:
+  - name: "Accelerator 16x16 @220MHz (PROJECTED)"
+    ai_flops_per_byte: 288
+    performance_gflops: 112.64
+    color: "tab:blue"
+    marker: "o"

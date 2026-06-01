@@ -1,0 +1,41 @@
+forward 0: 5433.3 ms
+forward 1: 5231.3 ms
+forward 2: 5197.4 ms
+forward 3: 5179.1 ms
+forward 4: 5259.2 ms
+forward 5: 5173.1 ms
+forward 6: 5048.6 ms
+forward 7: 5171.9 ms
+forward 8: 5304.7 ms
+forward 9: 6131.2 ms
+---
+device: cpu, torch: 2.11.0+cu130
+runs: 10 (median over), batch [2,3,520,960]
+median time: 5214.3 ms  (5.2143 s)
+mean time:   5313.0 ms  (5.3130 s)
+FLOPs/forward: 1.576e+12
+throughput (median): 302.3 GFLOP/s
+throughput (samples/s, N=2 pairs): 0.384 pairs/s
+	Command being timed: ".venv/bin/python codefest/cf09/benchmarks/bench_sw_baseline.py"
+	User time (seconds): 394.99
+	System time (seconds): 50.88
+	Percent of CPU this job got: 709%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:02.80
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 2894000
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 99
+	Minor (reclaiming a frame) page faults: 18441751
+	Voluntary context switches: 6333
+	Involuntary context switches: 5319
+	Swaps: 0
+	File system inputs: 70496
+	File system outputs: 0
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
