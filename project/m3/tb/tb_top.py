@@ -100,6 +100,11 @@ ADDR_SCRATCH = 0x10
 CTRL_START          = 1 << 0
 CTRL_MODE_LOAD      = 1 << 1
 CTRL_MODE_COMPUTE   = 0
+# Cross-tile accumulation control (COMPUTE only). See interface.sv CTRL
+# register map. ACCUM=1 adds this tile's column sums into result_buf;
+# HOLD=1 skips DRAIN and returns to IDLE holding the fp32 partials.
+CTRL_ACCUM          = 1 << 2
+CTRL_HOLD           = 1 << 3
 
 STATUS_BUSY     = 1 << 0
 STATUS_DONE     = 1 << 1
@@ -352,6 +357,53 @@ async def host_compute_tile(dut, x: list[float]) -> list[float]:
     return [bf16_to_f32(unpack_result_beat(b)) for b, _ in beats]
 
 
+async def _wait_idle(dut) -> None:
+    """Poll STATUS.BUSY until the core is back in IDLE."""
+    for _ in range(500_000):
+        rdata, _ = await axil_read(dut, ADDR_STATUS)
+        if not (rdata & STATUS_BUSY):
+            return
+        await RisingEdge(dut.clk)
+    raise TimeoutError("compute tile did not return to IDLE")
+
+
+async def host_compute_accumulate(dut, x: list[float], *,
+                                  accum: bool, hold: bool) -> list[float] | None:
+    """COMPUTE handshake with cross-tile accumulation control.
+
+    Writes CTRL = START | COMPUTE | (ACCUM?) | (HOLD?), pushes ACT_BEATS
+    activation beats, then:
+      hold=True  -> intermediate K-tile: the core captures into result_buf
+                    and returns to IDLE WITHOUT draining. No result beats
+                    are produced, so we only wait for BUSY to drop and
+                    return None.
+      hold=False -> last K-tile (or standalone GEMM): drain the N result
+                    beats and return the N bf16-decoded floats.
+    """
+    ctrl = CTRL_START | CTRL_MODE_COMPUTE
+    if accum:
+        ctrl |= CTRL_ACCUM
+    if hold:
+        ctrl |= CTRL_HOLD
+
+    bresp = await axil_write(dut, ADDR_CTRL, ctrl)
+    assert bresp == AXIL_OKAY, f"COMPUTE(accum={accum},hold={hold}) bresp: 0x{bresp:X}"
+
+    for b in range(ACT_BEATS):
+        beat = pack_activation_beat(x, b)
+        tlast = 1 if b == ACT_BEATS - 1 else 0
+        await axis_push_beat(dut, beat, tlast=tlast)
+
+    if hold:
+        # No DRAIN for a held tile -> nothing to drain; just wait IDLE.
+        await _wait_idle(dut)
+        return None
+
+    beats = await axis_drain_n(dut, N)
+    await _wait_idle(dut)
+    return [bf16_to_f32(unpack_result_beat(b)) for b, _ in beats]
+
+
 # =======================================================================
 # Test 1: smoke
 # =======================================================================
@@ -582,3 +634,315 @@ async def test_backpressure(dut):
 
     dut._log.info("  OK   all N results survived 6-cycle egress backpressure")
     dut._log.info("PASS: egress FIFO decouples drain from m_axis_tready")
+
+
+# =======================================================================
+# Test 6: tiled im2col -> conv, with on-chip cross-tile fp32 accumulation
+# =======================================================================
+# Conv geometry (fixed at the 16x16 tile design point). K = CIN*KH*KW
+# must be a multiple of M and COUT a multiple of N so the convolution
+# tiles cleanly onto the array; with M=N=16 the values below give
+# K=144 (9 K-tiles), 1 N-tile, 4 output pixels.
+CONV_CIN  = 16
+CONV_COUT = 16
+CONV_KH   = 3
+CONV_KW   = 3
+CONV_H    = 4
+CONV_W    = 4
+CONV_STRIDE = 1
+
+
+def _conv_dims():
+    hout = (CONV_H - CONV_KH) // CONV_STRIDE + 1
+    wout = (CONV_W - CONV_KW) // CONV_STRIDE + 1
+    k    = CONV_CIN * CONV_KH * CONV_KW
+    return hout, wout, k
+
+
+def _k_index(cin: int, ky: int, kx: int) -> int:
+    """Flattened reduction index shared by im2col columns and the weight
+    matrix, so a K-tile slice picks consistent rows of both."""
+    return (cin * CONV_KH + ky) * CONV_KW + kx
+
+
+def _make_conv_tensors(seed: int):
+    """Random activation X[CIN][H][W] and weights Wt[COUT][CIN][KH][KW]
+    from the exact-representable bf16 pool (so fp32 accumulation -- intra-
+    and cross-tile -- never rounds and the DUT stays bit-exact vs fp64)."""
+    rng = random.Random(seed)
+    pool = [-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0]
+    X = [[[rng.choice(pool) for _ in range(CONV_W)]
+          for _ in range(CONV_H)] for _ in range(CONV_CIN)]
+    Wt = [[[[rng.choice(pool) for _ in range(CONV_KW)]
+            for _ in range(CONV_KH)] for _ in range(CONV_CIN)]
+          for _ in range(CONV_COUT)]
+    return X, Wt
+
+
+def _im2col(X):
+    """Xcol[p][k]: one column per output pixel, K-ordered by _k_index."""
+    hout, wout, K = _conv_dims()
+    P = hout * wout
+    Xcol = [[0.0] * K for _ in range(P)]
+    for oy in range(hout):
+        for ox in range(wout):
+            p = oy * wout + ox
+            for cin in range(CONV_CIN):
+                for ky in range(CONV_KH):
+                    for kx in range(CONV_KW):
+                        iy = oy * CONV_STRIDE + ky
+                        ix = ox * CONV_STRIDE + kx
+                        Xcol[p][_k_index(cin, ky, kx)] = X[cin][iy][ix]
+    return Xcol
+
+
+def _weight_matrix_2d(Wt):
+    """W2d[k][cout], same K-ordering as _im2col."""
+    _, _, K = _conv_dims()
+    W2d = [[0.0] * CONV_COUT for _ in range(K)]
+    for cout in range(CONV_COUT):
+        for cin in range(CONV_CIN):
+            for ky in range(CONV_KH):
+                for kx in range(CONV_KW):
+                    W2d[_k_index(cin, ky, kx)][cout] = Wt[cout][cin][ky][kx]
+    return W2d
+
+
+def _conv_reference(Xcol, W2d):
+    """Y[p][cout] = quantize_bf16(sum_k qx[k]*qw[k][cout]), fp64 accumulate
+    over the FULL K. With exact-pool inputs this equals the DUT's fp32
+    intra-tile + cross-tile accumulation bit-for-bit (only the final
+    bf16 round is lossy)."""
+    _, _, K = _conv_dims()
+    P = len(Xcol)
+    Y = [[0.0] * CONV_COUT for _ in range(P)]
+    for p in range(P):
+        for cout in range(CONV_COUT):
+            acc = 0.0
+            for k in range(K):
+                acc += quantize_bf16(Xcol[p][k]) * quantize_bf16(W2d[k][cout])
+            Y[p][cout] = quantize_bf16(acc)
+    return Y
+
+
+@cocotb.test()
+async def test_conv_e2e(dut):
+    """End-to-end tiled convolution with HARDWARE cross-tile accumulation.
+
+    Decomposes a small im2col -> GEMM convolution into K-tiles of depth M
+    and streams them through the bus only. For each output pixel the host
+    sweeps the K dimension in M-deep slices:
+
+        for k_tile in range(K // M):
+            LOAD W[k_tile]                       (mode = LOAD_WEIGHTS)
+            COMPUTE(accum = k_tile>0,            (mode = COMPUTE,
+                    hold  = k_tile<last)          CTRL.ACCUM / CTRL.HOLD)
+        drain N results                          (only the last tile drains)
+
+    The accelerator accumulates each tile's column sums into result_buf in
+    fp32 (the new per-column add_fp32_p4 path), rounding to bf16 only on
+    the draining tile. The host does NO partial-sum arithmetic. Compares
+    every output pixel/channel bit-exact to an independent fp64 conv
+    reference (`_conv_reference`, NOT a prior DUT run).
+    """
+    cocotb.start_soon(Clock(dut.clk, CLK_PERIOD_NS, unit="ns").start())
+    _zero_all_inputs(dut)
+    await _reset(dut)
+
+    if (M, N) != (16, 16):
+        dut._log.info(
+            f"NOTE: conv test is fixed at the 16x16 tile design point; "
+            f"M=N={M},{N} -> skipping (not a failure)."
+        )
+        return
+
+    hout, wout, K = _conv_dims()
+    P  = hout * wout
+    KT = K // M           # K-tiles per output pixel
+    assert K % M == 0, f"K={K} not a multiple of M={M}"
+    assert CONV_COUT == N, f"COUT={CONV_COUT} must equal N={N} (1 N-tile)"
+
+    dut._log.info(
+        f"conv: Cin={CONV_CIN} Cout={CONV_COUT} {CONV_KH}x{CONV_KW} "
+        f"{CONV_H}x{CONV_W} -> {hout}x{wout}; K={K} -> {KT} K-tiles, "
+        f"{P} output pixels, tile={M}x{N}, "
+        f"CLK={CLK_PERIOD_NS}ns ({1000//CLK_PERIOD_NS} MHz)"
+    )
+
+    X, Wt = _make_conv_tensors(0xC04F)
+    Xcol  = _im2col(X)
+    W2d   = _weight_matrix_2d(Wt)
+    Y_ref = _conv_reference(Xcol, W2d)
+
+    Y_dut: list[list[float]] = []
+    for p in range(P):
+        for kt in range(KT):
+            # Weight slab for this K-tile: rows = K-slice, cols = Cout.
+            B = [[W2d[kt * M + i][j] for j in range(N)] for i in range(M)]
+            x = [Xcol[p][kt * M + i] for i in range(M)]
+
+            await host_load_weights(dut, B)
+            y = await host_compute_accumulate(
+                dut, x,
+                accum=(kt > 0),
+                hold=(kt < KT - 1),
+            )
+            if kt == KT - 1:
+                assert y is not None
+                Y_dut.append(y)
+
+    fails = []
+    for p in range(P):
+        for cout in range(N):
+            if bf16_bits(Y_dut[p][cout]) != bf16_bits(Y_ref[p][cout]):
+                fails.append((p, cout, Y_dut[p][cout], Y_ref[p][cout]))
+    if fails:
+        for p, c, dv, rv in fails[:8]:
+            dut._log.error(
+                f"  MISS Y[p={p}][cout={c}]: dut={dv} (0x{bf16_bits(dv):04X}) "
+                f"ref={rv} (0x{bf16_bits(rv):04X})"
+            )
+        assert False, (
+            f"conv e2e: {len(fails)}/{P*N} outputs mismatched "
+            f"({KT} K-tiles accumulated on chip)"
+        )
+
+    dut._log.info(
+        f"PASS: tiled conv -- all {P}x{N} outputs bit-exact vs fp64 "
+        f"reference; {KT} K-tiles accumulated in hardware (fp32, "
+        f"bf16-rounded once at drain)"
+    )
+
+
+# =======================================================================
+# Test 7 (opt-in): RAFT-dimension conv -- real Cin/Cout/kernel depth
+# =======================================================================
+# Same channel/kernel dims as the M1 dominant kernel
+# (`aten::mkldnn_convolution`, Cin=Cout=64, 3x3 -- codefest/cf02/
+# analysis/partition_rationale.md), but a 1x1 output (3x3 input, batch 1,
+# no pad) so the co-sim finishes. This is the first test that exercises
+# BOTH the real reduction depth (K = 64*9 = 576 -> 36 K-tiles) AND
+# N-column tiling (Cout=64 -> 4 N-tiles of N=16), which test_conv_e2e
+# does not (it pins Cout==N, a single N-tile).
+#
+# ~144 LOAD+COMPUTE pairs (4 N-tiles x 36 K-tiles) -> minutes of wall
+# clock in iverilog, so it is OPT-IN: set CONV_RAFT_DIMS=1 to run it
+# (the default `make m3-log` sweep skips it to stay fast). The full RAFT
+# spatial extent (260x480, batch 4 -> ~72M tile-computes) is intractable
+# in this co-sim and is deliberately NOT attempted; see README "Tests".
+RUN_RAFT_DIMS = os.environ.get("CONV_RAFT_DIMS", "0") == "1"
+
+RAFT_CIN  = 64
+RAFT_COUT = 64
+RAFT_KH   = 3
+RAFT_KW   = 3
+
+
+@cocotb.test(skip=not RUN_RAFT_DIMS)
+async def test_conv_raft_dims_e2e(dut):
+    """RAFT-dimension conv (Cin=Cout=64, 3x3) at a 1x1 output, with
+    on-chip cross-tile accumulation AND N-tiling.
+
+    Decomposes a single output pixel of a 64->64 3x3 conv onto the 16x16
+    array. The host loops the 4 N-tiles (output-channel groups of N) and,
+    within each, sweeps the 36 K-tiles (K = Cin*KH*KW = 576) accumulating
+    in result_buf -- restarting accumulation (CTRL.ACCUM=0) on each
+    N-tile's first K-tile so result_buf is overwritten, not contaminated
+    by the previous N-tile's drained values. Bit-exact vs an fp64
+    reference over the exact-value pool (max |sum| = 576*4 = 2304, an
+    exact fp32 multiple of 0.25 -> no rounding until the final bf16).
+
+    Opt-in (CONV_RAFT_DIMS=1) because it is ~144 LOAD+COMPUTE pairs.
+    """
+    cocotb.start_soon(Clock(dut.clk, CLK_PERIOD_NS, unit="ns").start())
+    _zero_all_inputs(dut)
+    await _reset(dut)
+
+    if (M, N) != (16, 16):
+        dut._log.info(
+            f"NOTE: RAFT-dims conv test is fixed at the 16x16 tile "
+            f"design point; M=N={M},{N} -> skipping (not a failure)."
+        )
+        return
+
+    K  = RAFT_CIN * RAFT_KH * RAFT_KW       # 576
+    KT = K // M                             # 36 K-tiles
+    NT = RAFT_COUT // N                      # 4 N-tiles
+    assert K % M == 0, f"K={K} not a multiple of M={M}"
+    assert RAFT_COUT % N == 0, f"COUT={RAFT_COUT} not a multiple of N={N}"
+
+    dut._log.info(
+        f"conv (RAFT dims): Cin={RAFT_CIN} Cout={RAFT_COUT} "
+        f"{RAFT_KH}x{RAFT_KW} 3x3 -> 1x1; K={K} -> {KT} K-tiles, "
+        f"{NT} N-tiles, tile={M}x{N}, "
+        f"CLK={CLK_PERIOD_NS}ns ({1000//CLK_PERIOD_NS} MHz)"
+    )
+
+    # One output pixel: input patch == the full 3x3 receptive field, so
+    # the im2col column is just X[cin][ky][kx] flattened by _k_index.
+    rng = random.Random(0x5A1D)
+    pool = [-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0]
+
+    def k_idx(cin, ky, kx):
+        return (cin * RAFT_KH + ky) * RAFT_KW + kx
+
+    Xcol = [0.0] * K
+    for cin in range(RAFT_CIN):
+        for ky in range(RAFT_KH):
+            for kx in range(RAFT_KW):
+                Xcol[k_idx(cin, ky, kx)] = rng.choice(pool)
+
+    W2d = [[0.0] * RAFT_COUT for _ in range(K)]
+    for cout in range(RAFT_COUT):
+        for cin in range(RAFT_CIN):
+            for ky in range(RAFT_KH):
+                for kx in range(RAFT_KW):
+                    W2d[k_idx(cin, ky, kx)][cout] = rng.choice(pool)
+
+    # fp64 reference over the full K (independent of any DUT run).
+    Y_ref = [0.0] * RAFT_COUT
+    for cout in range(RAFT_COUT):
+        acc = 0.0
+        for k in range(K):
+            acc += quantize_bf16(Xcol[k]) * quantize_bf16(W2d[k][cout])
+        Y_ref[cout] = quantize_bf16(acc)
+
+    # DUT: loop N-tiles (outer), accumulate K-tiles (inner) on chip.
+    Y_dut = [0.0] * RAFT_COUT
+    for nt in range(NT):
+        for kt in range(KT):
+            B = [[W2d[kt * M + i][nt * N + j] for j in range(N)]
+                 for i in range(M)]
+            x = [Xcol[kt * M + i] for i in range(M)]
+
+            await host_load_weights(dut, B)
+            y = await host_compute_accumulate(
+                dut, x,
+                accum=(kt > 0),
+                hold=(kt < KT - 1),
+            )
+            if kt == KT - 1:
+                assert y is not None
+                for j in range(N):
+                    Y_dut[nt * N + j] = y[j]
+
+    fails = []
+    for cout in range(RAFT_COUT):
+        if bf16_bits(Y_dut[cout]) != bf16_bits(Y_ref[cout]):
+            fails.append((cout, Y_dut[cout], Y_ref[cout]))
+    if fails:
+        for c, dv, rv in fails[:8]:
+            dut._log.error(
+                f"  MISS Y[cout={c}]: dut={dv} (0x{bf16_bits(dv):04X}) "
+                f"ref={rv} (0x{bf16_bits(rv):04X})"
+            )
+        assert False, (
+            f"RAFT-dims conv: {len(fails)}/{RAFT_COUT} outputs mismatched "
+            f"({NT} N-tiles x {KT} K-tiles accumulated on chip)"
+        )
+
+    dut._log.info(
+        f"PASS: RAFT-dims conv -- all {RAFT_COUT} outputs bit-exact vs "
+        f"fp64 reference; {NT} N-tiles x {KT} K-tiles ({K}-deep reduction) "
+        f"accumulated in hardware (fp32, bf16-rounded once per N-tile drain)"
+    )

@@ -23,16 +23,21 @@
 //   ACT_BEATS    = ceil(M / LANES)                    (AXIS beats to fill act_buf)
 //   inj_i        = ACT_BEATS + i * MAC_LATENCY        (row i act injection)
 //   ts[i][n]     = ACT_BEATS + (i + n + 1) * MAC_LATENCY
-//   capture cycle for column n:
+//   column-n psum valid at:
 //       compute_cycle == ACT_BEATS + (M + n) * MAC_LATENCY
-//   COMPUTE-exit at last capture (same cycle as the n=N-1 capture):
-//       compute_cycle == ACT_BEATS + (M + N - 1) * MAC_LATENCY
+//   result_buf[n] written ADD_STAGES later (the cross-tile accumulate
+//   adder, add_fp32_p4, sits between pe_psum_out[M-1][n] and result_buf):
+//       compute_cycle == ACT_BEATS + (M + n) * MAC_LATENCY + ADD_STAGES
+//   COMPUTE-exit at the last writeback (n = N-1):
+//       compute_cycle == ACT_BEATS + (M + N - 1) * MAC_LATENCY + ADD_STAGES
 //
-// For M = N = 4, LANES = 16, MAC_LATENCY = 8: ACT_BEATS = 1, captures
-// land at compute_cycle = 33, 41, 49, 57. COMPUTE-exit at 57, then DRAIN.
+// For M = N = 4, LANES = 16, MAC_LATENCY = 8, ADD_STAGES = 4: ACT_BEATS
+// = 1, psums valid at 33, 41, 49, 57; result_buf writes at 37, 45, 53,
+// 61. COMPUTE-exit at 61, then DRAIN (or IDLE if cfg_hold).
 //
-// For M = N = 48, LANES = 16, MAC_LATENCY = 8: ACT_BEATS = 3, captures
-// land at compute_cycle = 779, 787, ... ; COMPUTE-exit at 803, then DRAIN.
+// For M = N = 16, LANES = 16, MAC_LATENCY = 8, ADD_STAGES = 4: ACT_BEATS
+// = 1, last psum at 1 + (16+15)*8 = 249, last result_buf write at 253.
+// COMPUTE-exit at 253.
 //
 // LOAD-broadcast staging (added after the 300 MHz post-CTS attempt at
 // project/m3/synth/runs/RUN_2026-05-24_01-01-50/ pinned u_core.state[1]
@@ -92,6 +97,20 @@ module compute_core_pipelined #(
     input  logic                          res_ready,
 
     input  logic                          cfg_start,
+
+    // Cross-tile accumulation control (COMPUTE only; latched by
+    // interface_module on CTRL.START, stable for the whole tile):
+    //   cfg_accum = 0 -> overwrite result_buf with this tile's column
+    //                    sums (first K-tile, or a standalone GEMM).
+    //   cfg_accum = 1 -> add this tile's column sums into result_buf
+    //                    (subsequent K-tiles of a tiled convolution).
+    //   cfg_hold  = 0 -> drain the N results after capture (last
+    //                    K-tile / standalone GEMM).
+    //   cfg_hold  = 1 -> skip DRAIN, return to IDLE holding the fp32
+    //                    partials in result_buf for the next tile.
+    input  logic                          cfg_accum,
+    input  logic                          cfg_hold,
+
     output logic                          status_busy,
     output logic                          status_done,
 
@@ -114,10 +133,19 @@ module compute_core_pipelined #(
     // AXIS carries LANES bf16 lanes per beat; M may exceed LANES (48x48
     // with LANES=16 needs 3 beats to fill act_buf before MAC starts).
     localparam int ACT_BEATS     = (M + LANES - 1) / LANES;
-    // COMPUTE counts up to ACT_BEATS + (M + N - 1)*MAC_LATENCY inclusive
-    // (the last result capture cycle); add slack so the compare doesn't
-    // roll over at the boundary.
-    localparam int COMPUTE_MAX   = ACT_BEATS + (M + N - 1) * MAC_LATENCY;
+    // Latency of the result-stage accumulate adder (add_fp32_p4 has 4
+    // pipeline stages). Column n's psum is valid at compute_cycle ts[n];
+    // the accumulate result lands in result_buf ADD_STAGES cycles later.
+    // Keep in sync with project/m3/rtl/add_fp32_p4.sv's stage count.
+    localparam int ADD_STAGES    = 4;
+    // COMPUTE counts up to the LAST result-capture write, which is now
+    // ADD_STAGES after the last column's psum is valid (the accumulate
+    // adder sits between pe_psum_out[M-1][n] and result_buf[n]):
+    //   ACT_BEATS + (M + N - 1)*MAC_LATENCY + ADD_STAGES
+    // (the n=N-1 psum lands at the old COMPUTE_MAX; +ADD_STAGES is the
+    // adder drain). add slack so the compare doesn't roll over.
+    localparam int COMPUTE_MAX   = ACT_BEATS + (M + N - 1) * MAC_LATENCY
+                                   + ADD_STAGES;
     localparam int COMPUTE_CNT_W = $clog2(COMPUTE_MAX + 2);
     localparam int DRAIN_CNT_W   = $clog2(N + 1);
 
@@ -140,7 +168,13 @@ module compute_core_pipelined #(
         case (state)
             IDLE:    if (cfg_start)                                          next_state = LOAD;
             LOAD:    if (wt_count == WT_CNT_W'(M*N - 1))                     next_state = COMPUTE;
-            COMPUTE: if (compute_cycle == COMPUTE_CNT_W'(COMPUTE_MAX))       next_state = DRAIN;
+            // cfg_hold: intermediate K-tile -> skip DRAIN, hold partials
+            // in result_buf and return to IDLE for the next accumulating
+            // tile. cfg_hold = 0: drain (last K-tile / standalone GEMM).
+            COMPUTE: if (compute_cycle == COMPUTE_CNT_W'(COMPUTE_MAX)) begin
+                         if (cfg_hold) next_state = IDLE;
+                         else          next_state = DRAIN;
+                     end
             DRAIN:   if (drain_cycle == DRAIN_CNT_W'(N - 1) && res_ready)    next_state = IDLE;
             default:                                                         next_state = IDLE;
         endcase
@@ -327,14 +361,50 @@ module compute_core_pipelined #(
     endgenerate
 
     // ==================================================================
-    // Result capture
+    // Result capture + cross-tile accumulate
     //
-    // y[n] is valid in PE[M-1][n].psum_out from compute_cycle
-    //   ts = 1 + (M + n) * MAC_LATENCY
-    // We sample at edge end of compute_cycle == ts so result_buf[n]
-    // holds y[n] from compute_cycle == ts + 1 onward.
+    // y[n] (this tile's column-n sum) is valid in PE[M-1][n].psum_out at
+    //   ts[n] = ACT_BEATS + (M + n) * MAC_LATENCY
+    // Instead of latching it straight into result_buf, it passes through
+    // a per-column fp32 adder (add_fp32_p4, ADD_STAGES = 4) whose other
+    // operand is the running partial sum:
+    //
+    //   acc_a[n] = cfg_accum ? result_buf[n] : 32'd0
+    //   acc_out[n] = acc_a[n] + pe_psum_out[M-1][n]   (4-cycle pipeline)
+    //   result_buf[n] <= acc_out[n]   when compute_cycle == ts[n] + ADD_STAGES
+    //
+    // cfg_accum = 0 makes the add "0 + psum = psum" (overwrite, bit-exact
+    // -- the zero operand contributes a zero mantissa, so the sum is the
+    // other operand verbatim), so a standalone GEMM behaves exactly as
+    // the pre-accumulate design, just 4 cycles later. cfg_accum = 1 sums
+    // this tile into the resident fp32 partial -- true fp32 cross-tile
+    // accumulation, with the bf16 rounding deferred to the draining tile.
+    //
+    // No read/write hazard on result_buf[n]: it is read (as acc_a[n]) at
+    // ts[n] and written at ts[n] + ADD_STAGES; consecutive columns' ts
+    // are MAC_LATENCY (8) apart, larger than ADD_STAGES (4), and each
+    // column owns its own adder, so a column is never mid-flight when its
+    // own writeback occurs. result_buf is reset-only (NOT cleared on
+    // COMPUTE entry) so partials persist across K-tiles.
     // ==================================================================
     logic [31:0] result_buf [0:N-1];
+    logic [31:0] acc_a      [0:N-1];
+    logic [31:0] acc_out    [0:N-1];
+
+    genvar gn;
+    generate
+        for (gn = 0; gn < N; gn++) begin: g_acc
+            assign acc_a[gn] = cfg_accum ? result_buf[gn] : 32'd0;
+
+            add_fp32_p4 u_acc (
+                .clk (clk),
+                .rst (rst),
+                .a   (acc_a[gn]),
+                .b   (pe_psum_out[M-1][gn]),
+                .out (acc_out[gn])
+            );
+        end
+    endgenerate
 
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
@@ -342,8 +412,8 @@ module compute_core_pipelined #(
                 result_buf[n] <= '0;
         end else if (state == COMPUTE) begin
             for (int n = 0; n < N; n++) begin
-                if (compute_cycle == COMPUTE_CNT_W'(ACT_BEATS + (M + n) * MAC_LATENCY))
-                    result_buf[n] <= pe_psum_out[M-1][n];
+                if (compute_cycle == COMPUTE_CNT_W'(ACT_BEATS + (M + n) * MAC_LATENCY + ADD_STAGES))
+                    result_buf[n] <= acc_out[n];
             end
         end
     end

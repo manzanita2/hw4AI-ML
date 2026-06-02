@@ -47,9 +47,10 @@
 // ----  ----  -------  ------  -----------------------------------------
 // 0x00  0     CTRL     W-only  bit 0 = START. Writing 1 fires a one-
 //                              cycle pulse on cfg_start AND latches
-//                              bit 1 of the same write into the
-//                              cfg_mode register. Reads of CTRL return
-//                              0 (self-clearing strobe).
+//                              bits 1/2/3 of the same write into the
+//                              cfg_mode / cfg_accum / cfg_hold
+//                              registers. Reads of CTRL return 0
+//                              (self-clearing strobe).
 //                              bit 1 = MODE. 0 = COMPUTE (start a
 //                              compute tile, weights replayed from
 //                              weight_store by load_seq), 1 =
@@ -58,6 +59,20 @@
 //                              CTRL.START write so spurious writes
 //                              that don't set START don't reshape the
 //                              accelerator's intent.
+//                              bit 2 = ACCUM (COMPUTE only). 0 =
+//                              overwrite result_buf (first K-tile of a
+//                              tiled convolution, or a standalone
+//                              GEMM); 1 = add this tile's column sums
+//                              into result_buf (cross-tile fp32
+//                              accumulation). Latched with START.
+//                              bit 3 = HOLD (COMPUTE only). 0 = drain
+//                              the N results after capture (last
+//                              K-tile / standalone GEMM); 1 = skip
+//                              DRAIN and return to IDLE holding the
+//                              fp32 partial sums in result_buf for the
+//                              next accumulating tile. Latched with
+//                              START. Bit-exact rounding to bf16
+//                              happens only on the draining tile.
 // 0x04  1     STATUS   R-only  bit 0 = BUSY  (combinational mirror of
 //                                             status_busy from core)
 //                              bit 1 = DONE  (sticky; cleared by
@@ -124,6 +139,8 @@ module interface_module #(
     // -- decoded control / status -------------------------------------
     output logic                          cfg_start,
     output logic                          cfg_mode,
+    output logic                          cfg_accum,
+    output logic                          cfg_hold,
     input  logic                          status_busy,
     input  logic                          status_done,
     input  logic                          weights_loaded,
@@ -168,6 +185,8 @@ module interface_module #(
             s_axil_bvalid <= 1'b0;
             cfg_start     <= 1'b0;
             cfg_mode      <= 1'b0;
+            cfg_accum     <= 1'b0;
+            cfg_hold      <= 1'b0;
             scratch       <= '0;
         end else begin
             cfg_start <= 1'b0;  // pulse default; overridden on CTRL.START
@@ -178,10 +197,13 @@ module interface_module #(
                         if (aw_word_addr == ADDR_CTRL) begin
                             if (s_axil_wstrb[0] && s_axil_wdata[0]) begin
                                 cfg_start <= 1'b1;
-                                // MODE is sampled only when START fires
-                                // so that quirky writes (MODE without
-                                // START) don't reshape pending intent.
+                                // MODE / ACCUM / HOLD are sampled only
+                                // when START fires so that quirky writes
+                                // (mode/accum/hold without START) don't
+                                // reshape pending intent.
                                 cfg_mode  <= s_axil_wdata[1];
+                                cfg_accum <= s_axil_wdata[2];
+                                cfg_hold  <= s_axil_wdata[3];
                             end
                         end
                         if (aw_word_addr == ADDR_SCRATCH) begin

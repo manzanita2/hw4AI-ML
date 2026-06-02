@@ -43,7 +43,7 @@ ledger and critical-path identification.
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `README.md`                     | This file. Catalogs every M3 file plus simulator / OpenLane 2 versions and reproduction commands.                                                                                                                                                                                                            |
 | `rtl/top.sv`                    | Integrated top module. Bus-pin-only ports. Instantiates `interface_module`, ingress / egress FIFOs, `weight_store`, `load_seq`, `compute_core_pipelined` (MAC_LATENCY = 8), and an egress `skid_buffer`.                                                                                                     |
-| `rtl/interface.sv`              | M3 AXI4-Lite control / status register file (module name `interface_module`). Adds CTRL.MODE (bit 1) and STATUS.WEIGHTS_LOADED / STATUS.LOAD_ERR (bits 2-3) on top of the M2 register map.                                                                                                                   |
+| `rtl/interface.sv`              | M3 AXI4-Lite control / status register file (module name `interface_module`). Adds CTRL.MODE (bit 1), CTRL.ACCUM (bit 2) + CTRL.HOLD (bit 3) for cross-tile accumulation, and STATUS.WEIGHTS_LOADED / STATUS.LOAD_ERR (bits 2-3) on top of the M2 register map.                                                  |
 | `rtl/weight_store.sv`           | M*N-entry bf16 weight RAM. AXIS-beat write port (driven by the LOAD_WEIGHTS demux), **registered** read for `load_seq` (Phase 10). Sticky `weights_loaded` and `load_err` flags wired to STATUS.                                                                                                             |
 | `rtl/load_seq.sv`               | Tiny FSM that replays `weight_store` into `compute_core_pipelined`'s existing `wt_load` handshake at the start of every COMPUTE. Keeps `pe.sv` weight-stationary semantics unchanged.                                                                                                                        |
 | `rtl/fifo_sync.sv`              | Parameterized synchronous FIFO (`WIDTH`, `DEPTH`). Used twice: ingress (depth 4 skid), egress (depth N). Phase 10: pointer-update `always_ff` is split from the memory-write `always_ff` so reset never reaches the `mem` D-pin.                                                                             |
@@ -56,7 +56,7 @@ ledger and critical-path identification.
 | `tb/tb_top.py`                  | cocotb harness exercising `top` end-to-end through the AXI4-Lite + AXI4-Stream pins only. Five tests; see "Tests" below. Spec lists this as `tb_top.sv`; see "Filename deviation".                                                                                                                           |
 | `tb/Makefile`                   | cocotb / Icarus driver. `make` builds and runs `tb_top`. `make m3-log` regenerates `../sim/cosim_run.log` from a clean state. `make synth-yosys` runs yosys synth/`stat` at the same `M`/`N`. Owns the single-sourced design point (`M ?= 16`, `N ?= 16`, `CLK_PERIOD_NS ?= 10`), exported to `tb_top.py`.   |
 | `sim/cosim_run.log`             | Fresh `make m3-log` capture. Five `PASS:` lines, one per test.                                                                                                                                                                                                                                               |
-| `sim/cosim_waveform.png`        | Annotated end-to-end waveform from `tb/artifacts/top.vcd`. Three regions shaded: host write, internal compute, host read.                                                                                                                                                                                    |
+| `sim/cosim_waveform.png`        | Annotated end-to-end waveform from `tb/artifacts/top.vcd`, rendered as four independently zoomed panels (load weights / start compute / internal compute / host read) so each region's AXI edges stay legible despite the ~5 us tile spanning a 16-cycle drain. Regions auto-detected from signal edges.        |
 | `sim/render_waveform.py`        | Headless VCD-to-PNG renderer used to produce `cosim_waveform.png` (no X server required, unlike gtkwave).                                                                                                                                                                                                    |
 | `synth/config.json`             | OpenLane 2 configuration. `DESIGN_NAME = top`, sky130, 100 MHz (10 ns) target, M = N = 16 scope (matches `top.sv` defaults + the co-sim). Lists every `rtl/*.sv` file consumed (mul_bf16_p3, not p2).                                                                                                        |
 | `synth/openlane_run.log`        | Captured stdout/stderr from the OpenLane 2 invocation.                                                                                                                                                                                                                                                       |
@@ -129,6 +129,14 @@ partial-product reduce critical path.
 - **AXI-Lite `CTRL.MODE` (bit 1)** and **STATUS bits 2-3** so the host
 can disambiguate "I'm loading weights now" from "I'm sending an
 activation tile now" on a single AXI4-Stream port.
+- **AXI-Lite `CTRL.ACCUM` (bit 2)** and **`CTRL.HOLD` (bit 3)** for
+on-chip cross-tile fp32 accumulation: `ACCUM` adds a COMPUTE tile's
+column sums into the resident `result_buf` instead of overwriting it,
+and `HOLD` skips the DRAIN so the fp32 partials persist for the next
+K-tile. A standalone GEMM leaves both clear (overwrite + drain) and
+behaves exactly as before. The result-capture stage gains `N` parallel
+`add_fp32_p4` adders (one per output column); bf16 rounding still
+happens once, on the draining tile.
 - **Asynchronous active-high `rst`** across every M3 RTL file. M2 was
 synchronous-reset, but sky130 has no synchronous-reset DFF cells, so
 the M3 reset convention was flipped (Phase 8) to remove `rst` from
@@ -137,7 +145,8 @@ testbenches still pass bit-exact.
 
 ## Tests
 
-`tb_top.py` runs five cocotb tests, all driven through the bus only:
+`tb_top.py` runs six cocotb tests by default (plus one opt-in), all
+driven through the bus only:
 
 1. `test_top_smoke` -- reset + idle outputs (canary).
 2. `test_axil_scratch_loopback` -- write + read SCRATCH @ 0x10
@@ -155,6 +164,16 @@ testbenches still pass bit-exact.
 5. `test_backpressure` -- hold `m_axis_tready=0` for several cycles
   mid-drain. Proves the egress FIFO + skid buffer actually decouple
    the drain from downstream backpressure.
+6. `test_conv_e2e` -- **full tiled convolution with on-chip
+   cross-tile accumulation**. A small `Cin=Cout=16`, 3x3, 4x4->2x2
+   conv (K=144 -> 9 K-tiles, 4 output pixels) decomposed to im2col ->
+   GEMM and streamed through the bus. For each output pixel the host
+   sweeps the K dimension in M-deep slices, setting `CTRL.ACCUM` on
+   tiles after the first and `CTRL.HOLD` on every tile but the last;
+   the accelerator sums the partial tiles into `result_buf` in fp32 and
+   rounds to bf16 only on the draining tile. The host does no
+   partial-sum arithmetic. Compares every output bit-exact to an
+   independent fp64 conv reference.
 
 The headline GEMM tile is the inner kernel a full im2col convolution
 decomposes into (the 1x1 channel-projection convs in `raft_large`, the
@@ -162,7 +181,34 @@ M1 profiling target, are exactly such GEMMs). Real RAFT uses Cin / Cout
 in the ~96 - 256 range; the M3 scope runs one 16x16 tile so cocotb
 finishes in seconds, while keeping the structure that matters: K-tiling
 on the reduction axis, N-column tiling, and weights resident across
-multiple activation columns (the weight-reuse test).
+multiple activation columns (the weight-reuse test). `test_conv_e2e`
+then closes the loop by accumulating the K-tiles on chip so the host
+never touches a partial sum.
+
+Cross-tile accumulation uses a single `result_buf`, so the host loops
+K innermost per output pixel and reloads the weight slab every K-tile
+(weight reuse across pixels is sacrificed). That is the deliberate cost
+of one result bank; reusing weights across pixels at RAFT scale (where
+this reload pathology would otherwise collapse arithmetic intensity) is
+the efficiency lever deferred to M4.
+
+7. `test_conv_raft_dims_e2e` -- **opt-in** (`CONV_RAFT_DIMS=1`). Same
+   channel/kernel dims as the M1 dominant kernel (`Cin=Cout=64`, 3x3,
+   per `[../../codefest/cf02/analysis/partition_rationale.md](../../codefest/cf02/analysis/partition_rationale.md)`)
+   at a 1x1 output (batch 1, no pad). First test to exercise the real
+   reduction depth (K = 64*9 = 576 -> **36 K-tiles**) AND **N-column
+   tiling** (Cout=64 -> 4 N-tiles), accumulating all of it on chip and
+   comparing 64 outputs bit-exact to an fp64 reference. ~144 LOAD+COMPUTE
+   pairs (~5 min in iverilog), so it is skipped by the default sweep:
+
+   ```
+   CONV_RAFT_DIMS=1 COCOTB_TEST_FILTER=test_conv_raft_dims_e2e make
+   ```
+
+   The full RAFT spatial extent (260x480, batch 4 -> ~72M tile-computes)
+   is intractable in this co-sim and is deliberately not attempted; the
+   1x1 output keeps the on-chip decomposition (K-depth, N-tiles) faithful
+   to RAFT while finishing in minutes.
 
 ## Toolchain
 
@@ -191,9 +237,13 @@ python3.11 -m venv .venv-cocotb
 # co-simulation -- regenerates project/m3/sim/cosim_run.log from clean
 cd project/m3/tb
 make m3-log
-# expect: 5 PASS lines
+# expect: 6 PASS + 1 SKIP lines
 
 # waveform PNG -- regenerates project/m3/sim/cosim_waveform.png
+# needs a VCD; filter to the headline tile so the VCD stays small and the
+# picture shows exactly one LOAD + COMPUTE tile.
+cd ../tb
+COCOTB_TEST_FILTER=test_gemm_tile_e2e ENABLE_VCD=1 make
 cd ../sim
 ../../../.venv-cocotb/bin/python render_waveform.py
 

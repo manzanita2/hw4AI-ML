@@ -147,6 +147,8 @@ module top #(
     // -- interface_module decoded API -------------------------------
     logic cfg_start;
     logic cfg_mode;
+    logic cfg_accum;
+    logic cfg_hold;
     logic core_cfg_start;
     logic stream_clr;
     assign core_cfg_start = cfg_start && (cfg_mode == 1'b0);
@@ -235,6 +237,8 @@ module top #(
 
         .cfg_start      (cfg_start),
         .cfg_mode       (cfg_mode),
+        .cfg_accum      (cfg_accum),
+        .cfg_hold       (cfg_hold),
         .status_busy    (status_busy),
         .status_done    (status_done),
         .weights_loaded (weights_loaded),
@@ -370,6 +374,8 @@ module top #(
         .res_last     (cc_res_last),
         .res_ready    (cc_res_ready),
         .cfg_start    (core_cfg_start),
+        .cfg_accum    (cfg_accum),
+        .cfg_hold     (cfg_hold),
         .status_busy  (status_busy),
         .status_done  (status_done),
         .wt_data_ext  (ls_wt_data)

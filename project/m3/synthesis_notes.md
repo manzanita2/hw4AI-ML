@@ -1479,6 +1479,40 @@ and verifies *that* end to end:
   The M4 throughput benchmark stays comparable: scaling 256 PEs to the
   2304-PE aspiration is a parameter sweep, not a redesign.
 
+### On-chip cross-tile fp32 accumulation (result stage)
+
+To let the host stream a tiled im2col convolution without doing any
+partial-sum arithmetic itself, the result-capture stage now accumulates
+across K-tiles in hardware:
+
+- **Two new CTRL bits** (`interface.sv`): `CTRL.ACCUM` (bit 2) and
+  `CTRL.HOLD` (bit 3), latched on `CTRL.START` exactly like `CTRL.MODE`.
+  `ACCUM` selects add-vs-overwrite into `result_buf`; `HOLD` skips the
+  DRAIN so the fp32 partials persist for the next tile.
+- **N parallel `add_fp32_p4`** (`compute_core_pipelined.sv`): the
+  result-capture path that used to latch `pe_psum_out[M-1][n]` straight
+  into `result_buf[n]` now routes through one fp32 adder per output
+  column, with the other operand being `cfg_accum ? result_buf[n] : 0`.
+  A standalone GEMM (`ACCUM=0`) computes `0 + psum`, which is bit-exact
+  the prior value (the zero operand contributes a zero mantissa), so the
+  existing five tests are unaffected functionally.
+- **+`ADD_STAGES` (4) capture latency**: column `n`'s writeback moves
+  from `ts[n]` to `ts[n] + 4`, and `COMPUTE_MAX` grows by the same 4
+  cycles. No `result_buf` read/write hazard: consecutive `ts[n]` are
+  `MAC_LATENCY = 8` apart (> 4) and each column owns its adder, so a
+  column is never mid-flight at its own writeback. bf16 rounding still
+  happens once, at the draining tile.
+- **Area delta** to record on the next `make synth-yosys`: +`N`
+  (= 16) `add_fp32_p4` instances at the result stage. These are far
+  cheaper than the `M*N` (= 256) PE-internal adders, but they are new
+  sequential + combinational cells the 4x4/16x16 reports predate.
+- **Cost knowingly accepted**: a single `result_buf` means the host
+  loops K innermost per output pixel and reloads the weight slab every
+  K-tile (no weight reuse across pixels). At RAFT scale this reload
+  pathology would dominate; multi-bank `result_buf` / weight reuse is an
+  M4 efficiency item, not an M3 correctness one. `test_conv_e2e` proves
+  the accumulation is bit-exact at the small scope.
+
 ### What the spec asks for vs what landed
 
 | Spec line                              | Architecture.md target          | M3 submission (this directory)              |
