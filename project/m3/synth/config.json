@@ -28,7 +28,7 @@
   "GRT_LAYER_ADJUSTMENTS": [0.99, 0, 0, 0, 0, 0],
 
   "RUN_HEURISTIC_DIODE_INSERTION": false,
-  "GRT_REPAIR_ANTENNAS": true,
+  "GRT_REPAIR_ANTENNAS": false,
 
   "comment_clock": "100 MHz (10.0 ns) target -- the M3 scope adjustment from architecture.md's 300 MHz aspiration (see synthesis_notes.md). The deeper MAC pipeline that was built chasing 300 MHz remains: m2/{pe,mul_bf16,acc_fp32::add_fp32} are replaced by m3/{pe_pipelined, mul_bf16_p3, add_fp32_p4} (MAC_LATENCY = 8 since Phase 11). Iteration log lives in synthesis_notes.md: depth bump (1) -> FSM-broadcast staging (2) -> disjunct-trick to defeat opt_merge (3) -> async-reset RTL (4) -> egress skid (5) -> fifo_sync split + ws registered read (6) -> mul_bf16_p2 to mul_bf16_p3 B-half radix-4 split (7). At 10 ns the prior post-resizer WNS (-1.13 ns at 300 MHz) closes with margin.",
   "comment_floorplan": "FP_CORE_UTIL = 55, PL_TARGET_DENSITY = 0.65 chosen after the depth-7 first attempt left u_core.state[1] (FSM bit driving all 16 PE clr_psum lines) on the critical path with most of the slack burned in 8+ buffer hops of wire delay rather than gate delay. Higher utilization shrinks the floorplan and the inter-PE wires that dominate that fanout. SYNTH_STRATEGY = 'DELAY 0' biases yosys toward shorter combinational chains at the cost of area.",
