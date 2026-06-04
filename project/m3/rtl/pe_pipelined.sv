@@ -76,13 +76,13 @@ module pe_pipelined (
 );
 
     // -------------------------------------------------------------------
-    // Pipeline-depth localparams. Tightly coupled to mul_bf16_p3 (3 stages)
-    // and add_fp32_p4 (4 stages); changing them here without changing the
+    // Pipeline-depth localparams. Tightly coupled to mul_bf16_p2 (2 stages)
+    // and add_fp32_p2 (2 stages); changing them here without changing the
     // sub-module pipeline depths will mis-align the systolic schedule.
     // -------------------------------------------------------------------
-    localparam int MUL_STAGES   = 3;
-    localparam int ADD_STAGES   = 4;
-    localparam int MAC_LATENCY  = 1 + MUL_STAGES + ADD_STAGES; // = 8
+    localparam int MUL_STAGES   = 2;
+    localparam int ADD_STAGES   = 2;
+    localparam int MAC_LATENCY  = 1 + MUL_STAGES + ADD_STAGES; // = 5
 
     // act_chain has (MAC_LATENCY - 1) extra register stages after act_reg
     // so act_out is act_in delayed by MAC_LATENCY cycles total.
@@ -135,7 +135,7 @@ module pe_pipelined (
     // -------------------------------------------------------------------
     logic [31:0] product;
 
-    mul_bf16_p3 u_mul (
+    mul_bf16_p2 u_mul (
         .clk (clk),
         .rst (rst | clr_psum),
         .a   (act_reg),
@@ -173,7 +173,7 @@ module pe_pipelined (
     // -------------------------------------------------------------------
     logic [31:0] sum_out;
 
-    add_fp32_p4 u_add (
+    add_fp32_p2 u_add (
         .clk (clk),
         .rst (rst | clr_psum),
         .a   (product),

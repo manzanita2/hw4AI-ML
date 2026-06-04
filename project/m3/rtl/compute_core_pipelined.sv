@@ -133,11 +133,11 @@ module compute_core_pipelined #(
     // AXIS carries LANES bf16 lanes per beat; M may exceed LANES (48x48
     // with LANES=16 needs 3 beats to fill act_buf before MAC starts).
     localparam int ACT_BEATS     = (M + LANES - 1) / LANES;
-    // Latency of the result-stage accumulate adder (add_fp32_p4 has 4
+    // Latency of the result-stage accumulate adder (add_fp32_p2 has 2
     // pipeline stages). Column n's psum is valid at compute_cycle ts[n];
     // the accumulate result lands in result_buf ADD_STAGES cycles later.
-    // Keep in sync with project/m3/rtl/add_fp32_p4.sv's stage count.
-    localparam int ADD_STAGES    = 4;
+    // Keep in sync with project/m3/rtl/add_fp32_p2.sv's stage count.
+    localparam int ADD_STAGES    = 2;
     // COMPUTE counts up to the LAST result-capture write, which is now
     // ADD_STAGES after the last column's psum is valid (the accumulate
     // adder sits between pe_psum_out[M-1][n] and result_buf[n]):
@@ -396,7 +396,7 @@ module compute_core_pipelined #(
         for (gn = 0; gn < N; gn++) begin: g_acc
             assign acc_a[gn] = cfg_accum ? result_buf[gn] : 32'd0;
 
-            add_fp32_p4 u_acc (
+            add_fp32_p2 u_acc (
                 .clk (clk),
                 .rst (rst),
                 .a   (acc_a[gn]),

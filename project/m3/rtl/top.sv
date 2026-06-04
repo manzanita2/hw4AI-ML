@@ -343,7 +343,8 @@ module top #(
     // Compute core (M3-pipelined)
     // ==================================================================
     // M3 swaps the m2 compute_core for compute_core_pipelined, which
-    // instantiates pe_pipelined (MAC_LATENCY = 8 since Phase 11) in
+    // instantiates pe_pipelined (MAC_LATENCY = 5: mul_bf16_p2 + add_fp32_p2,
+    // shallowed from depth-8 once the 100 MHz target left slack) in
     // place of the m2 pe.sv. Same external port shape; the only
     // differences are:
     //   - no EXTERNAL_WT_SRC param (m3 always feeds weights via
@@ -361,7 +362,7 @@ module top #(
         .M            (M),
         .N            (N),
         .LANES        (LANES),
-        .MAC_LATENCY  (8)
+        .MAC_LATENCY  (5)
     ) u_core (
         .clk          (clk),
         .rst          (rst),

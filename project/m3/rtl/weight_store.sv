@@ -99,8 +99,17 @@ module weight_store #(
 
     // ------------------------------------------------------------------
     // Storage
+    //
+    // Row-banked 2D layout: mem[i][j] holds the linear entry i*N + j (the
+    // same row-major mapping as the old flat mem[i*N+j]). Banking by row
+    // lets the sequential read decompose into M independent N:1 muxes
+    // (one per bank) instead of one global M*N:1 mux -- see the read
+    // section below for why that matters for routing.
     // ------------------------------------------------------------------
-    logic [DATA_W-1:0] mem [0:DEPTH-1];
+    localparam int BANK_SEL_W = (M <= 1) ? 1 : $clog2(M);
+    localparam int BANK_OFF_W = (N <= 1) ? 1 : $clog2(N);
+
+    logic [DATA_W-1:0] mem [0:M-1][0:N-1];
 
     // ------------------------------------------------------------------
     // Beat counter + sticky status
@@ -129,9 +138,10 @@ module weight_store #(
             // (beat_count * LANES). For BEATS_NEEDED == 1 this is just
             // mem[0..DEPTH-1] = wr_data sliced.
             for (int l = 0; l < LANES; l++) begin
-                if (beat_count * LANES + l < DEPTH) begin
-                    mem[beat_count * LANES + l]
-                        <= wr_data[l*DATA_W +: DATA_W];
+                int s;
+                s = beat_count * LANES + l;
+                if (s < DEPTH) begin
+                    mem[s / N][s % N] <= wr_data[l*DATA_W +: DATA_W];
                 end
             end
 
@@ -154,7 +164,7 @@ module weight_store #(
     end
 
     // ------------------------------------------------------------------
-    // Registered read for load_seq.
+    // Registered, row-banked read for load_seq.
     //
     // Phase 10: was `assign rd_data = mem[rd_addr]` (combinational). The
     // iter-5 violator class B path
@@ -162,24 +172,41 @@ module weight_store #(
     //                 -> wt_data_ext -> wt_data_ext_d/D
     // crossed three module boundaries between cnt's flop Q and the
     // capturing flop D pin in compute_core, slack -1.333 ns. Iter 6
-    // moves that capturing flop here (rd_data_q, immediately after the
-    // mem mux) and removes the symmetric wt_data_ext_d flop in
-    // compute_core. Net flop count on the load_seq -> PE path is
-    // unchanged (1 flop either way); the long combinational chain is
-    // cut into two halves, with no module-boundary wiring on the
-    // critical half.
+    // moved that capturing flop here (immediately after the mem mux) and
+    // removed the symmetric wt_data_ext_d flop in compute_core.
     //
-    // No rst on rd_data_q: it follows the same lazy-mem convention as
-    // mem itself (line 64 comment); compute_core gates the captured
-    // weight on wt_load_reg, which is rst-aware, so any startup x at
-    // rd_data_q is ignored until the first wt_load fires.
+    // Routing pass: that single registered read was `rd_data_q <=
+    // mem[rd_addr]`, a flat M*N:1 mux whose fan-in pulled every entry to
+    // one point -- the `u_wstore.mem` net that bombed global routing /
+    // antenna repair. It is now split into M per-bank N:1 reads, each
+    // registered into bank_q[b], plus a small final M:1 mux selected by
+    // the (registered) bank index i_q. Read latency is unchanged at 1
+    // cycle: bank_q[b] and i_q both register the SAME rd_addr decode, so
+    //   rd_data = bank_q[i_q] = mem[i_prev][j_prev] = mem[rd_addr_prev]
+    // -- bit-identical to the old flat read. The per-bank register is
+    // what forces synthesis to keep the banks as M local muxes (the
+    // placer clusters each around its bank_q[b] flop) instead of
+    // flattening back into one global cone.
+    //
+    // No rst on bank_q / i_q: same lazy-mem convention as mem itself
+    // (line 64 comment); compute_core gates the captured weight on
+    // wt_load_reg, which is rst-aware, so any startup x is ignored until
+    // the first wt_load fires.
     // ------------------------------------------------------------------
-    logic [DATA_W-1:0] rd_data_q;
+    logic [BANK_SEL_W-1:0] rd_bank;
+    logic [BANK_OFF_W-1:0] rd_off;
+    assign rd_bank = BANK_SEL_W'(rd_addr / N);
+    assign rd_off  = BANK_OFF_W'(rd_addr % N);
+
+    logic [DATA_W-1:0]     bank_q [0:M-1];
+    logic [BANK_SEL_W-1:0] i_q;
 
     always_ff @(posedge clk) begin
-        rd_data_q <= mem[rd_addr];
+        for (int b = 0; b < M; b++)
+            bank_q[b] <= mem[b][rd_off];
+        i_q <= rd_bank;
     end
 
-    assign rd_data = rd_data_q;
+    assign rd_data = bank_q[i_q];
 
 endmodule
