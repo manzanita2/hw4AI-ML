@@ -3,8 +3,8 @@
 
   "VERILOG_FILES": [
     "dir::../../m2/rtl/acc_fp32.sv",
-    "dir::../rtl/mul_bf16_p3.sv",
-    "dir::../rtl/add_fp32_p4.sv",
+    "dir::../rtl/mul_bf16_p2.sv",
+    "dir::../rtl/add_fp32_p2.sv",
     "dir::../rtl/pe_pipelined.sv",
     "dir::../rtl/compute_core_pipelined.sv",
     "dir::../rtl/fifo_sync.sv",
