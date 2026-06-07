@@ -1,0 +1,19 @@
+<testsuites name="results">
+  <testsuite name="all" package="all">
+    <property name="random_seed" value="1780831342" />
+    <testcase name="test_top_smoke" classname="tb_top" file="/home/hx3d/opt/hw4AI-ML/project/m4/tb/tb_top.py" lineno="482" time="0.02557086944580078" sim_time_ns="31.0" ratio_time="1212.3170104054004" />
+    <testcase name="test_axil_scratch_loopback" classname="tb_top" file="/home/hx3d/opt/hw4AI-ML/project/m4/tb/tb_top.py" lineno="514" time="0.02470564842224121" sim_time_ns="80.0" ratio_time="3238.125898690445" />
+    <testcase name="test_gemm_tile_e2e" classname="tb_top" file="/home/hx3d/opt/hw4AI-ML/project/m4/tb/tb_top.py" lineno="556" time="1.2100865840911865" sim_time_ns="4670.0" ratio_time="3859.2279770685323" />
+    <testcase name="test_weight_reuse_two_activation_tiles" classname="tb_top" file="/home/hx3d/opt/hw4AI-ML/project/m4/tb/tb_top.py" lineno="611" time="2.1880722045898438" sim_time_ns="9070.0" ratio_time="4145.2014156453215" />
+    <testcase name="test_backpressure" classname="tb_top" file="/home/hx3d/opt/hw4AI-ML/project/m4/tb/tb_top.py" lineno="658" time="1.1261415481567383" sim_time_ns="4690.0" ratio_time="4164.662965926942" />
+    <testcase name="test_conv_e2e" classname="tb_top" file="/home/hx3d/opt/hw4AI-ML/project/m4/tb/tb_top.py" lineno="800" time="39.80170559883118" sim_time_ns="161600.0" ratio_time="4060.127513850702" />
+    <testcase name="test_stream_block" classname="tb_top" file="/home/hx3d/opt/hw4AI-ML/project/m4/tb/tb_top.py" lineno="892" time="1.502662181854248" sim_time_ns="5930.0" ratio_time="3946.3294355904573" />
+    <testcase name="test_conv_stream_e2e" classname="tb_top" file="/home/hx3d/opt/hw4AI-ML/project/m4/tb/tb_top.py" lineno="954" time="10.54308009147644" sim_time_ns="41450.0" ratio_time="3931.488676967396" />
+    <testcase name="test_conv_raft_dims_e2e" classname="tb_top" file="/home/hx3d/opt/hw4AI-ML/project/m4/tb/tb_top.py" lineno="1063" time="0" sim_time_ns="0" ratio_time="0">
+      <skipped />
+    </testcase>
+    <testcase name="test_benchmark" classname="tb_top" file="/home/hx3d/opt/hw4AI-ML/project/m4/tb/tb_top.py" lineno="1203" time="0" sim_time_ns="0" ratio_time="0">
+      <skipped />
+    </testcase>
+  </testsuite>
+</testsuites>

@@ -361,13 +361,19 @@ module compute_core_pipelined #(
     always_comb begin
         for (int i = 0; i < M; i++)
             row_act_feed[i] = '0;
-        if (state == COMPUTE) begin
-            for (int i = 0; i < M; i++) begin
-                int c_i;
-                c_i = int'(compute_cycle) - ACT_BEATS - i * MAC_LATENCY;
-                if (c_i >= 0 && c_i < int'(eff_pix_count))
-                    row_act_feed[i] = act_block[c_i][i];
-            end
+        // c_i is assigned unconditionally on every loop iteration (the COMPUTE
+        // gate is folded into the read condition below), so the static loop
+        // temp is always written before it is read. That prevents an inferred
+        // latch -- the prior form assigned c_i only inside `if (state ==
+        // COMPUTE)`, leaving it unwritten (hence latched) on the other path.
+        // SystemVerilog `automatic` is avoided here because Icarus (the co-sim
+        // simulator) does not support overriding the default variable lifetime
+        // on procedural block temps.
+        for (int i = 0; i < M; i++) begin
+            int c_i;
+            c_i = int'(compute_cycle) - ACT_BEATS - i * MAC_LATENCY;
+            if (state == COMPUTE && c_i >= 0 && c_i < int'(eff_pix_count))
+                row_act_feed[i] = act_block[c_i][i];
         end
     end
 
