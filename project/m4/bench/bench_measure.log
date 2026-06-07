@@ -8946,9 +8946,10 @@ mkdir -p sim_build
 /home/hx3d/opt/hw4AI-ML/project/m4/rtl/add_fp32_p2.sv:195: sorry: constant selects in always_* processes are not fully supported (the process will be sensitive to all bits in 'exp_norm_c[8:0]').
 /home/hx3d/opt/hw4AI-ML/project/m4/rtl/add_fp32_p2.sv:200: sorry: constant selects in always_* processes are not fully supported (the process will be sensitive to all bits in 'exp_norm_c[8:0]').
 /home/hx3d/opt/hw4AI-ML/project/m4/rtl/add_fp32_p2.sv:200: sorry: constant selects in always_* processes are not fully supported (the process will be sensitive to all bits in 'mant_norm_c[27:0]').
-/home/hx3d/opt/hw4AI-ML/project/m4/rtl/interface.sv:194: vvp.tgt sorry: Case unique/unique0 qualities are ignored.
-/home/hx3d/opt/hw4AI-ML/project/m4/rtl/interface.sv:245: vvp.tgt sorry: Case unique/unique0 qualities are ignored.
-/home/hx3d/opt/hw4AI-ML/project/m4/rtl/interface.sv:248: vvp.tgt sorry: Case unique/unique0 qualities are ignored.
+/home/hx3d/opt/hw4AI-ML/project/m4/rtl/compute_core_pipelined.sv:226: sorry: constant selects in always_* processes are not fully supported (the process will be sensitive to all bits in 'cfg_pix_count[15:0]').
+/home/hx3d/opt/hw4AI-ML/project/m4/rtl/interface.sv:214: vvp.tgt sorry: Case unique/unique0 qualities are ignored.
+/home/hx3d/opt/hw4AI-ML/project/m4/rtl/interface.sv:272: vvp.tgt sorry: Case unique/unique0 qualities are ignored.
+/home/hx3d/opt/hw4AI-ML/project/m4/rtl/interface.sv:275: vvp.tgt sorry: Case unique/unique0 qualities are ignored.
 /home/hx3d/opt/hw4AI-ML/project/m4/rtl/load_seq.sv:78: vvp.tgt sorry: Case unique/unique0 qualities are ignored.
 /home/hx3d/opt/hw4AI-ML/project/m4/rtl/load_seq.sv:91: vvp.tgt sorry: Case unique/unique0 qualities are ignored.
 rm -f results.xml
@@ -8957,22 +8958,22 @@ COCOTB_TEST_MODULES=tb_top COCOTB_TESTCASE=test_benchmark COCOTB_TEST_FILTER= CO
      -.--ns INFO     gpi                                ..mbed/gpi_embed.cpp:93   in _embed_init_python              Using Python 3.11.9 interpreter at /home/hx3d/opt/hw4AI-ML/.venv-cocotb/bin/python
      -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:79   in gpi_print_registered_impl       VPI registered
      0.00ns INFO     cocotb                             Running on Icarus Verilog version 14.0 (devel)
-     0.00ns INFO     cocotb                             Seeding Python random module with 1780825009
+     0.00ns INFO     cocotb                             Seeding Python random module with 1780828443
      0.00ns INFO     cocotb                             Initialized cocotb v2.0.1 from /home/hx3d/opt/hw4AI-ML/.venv-cocotb/lib64/python3.11/site-packages/cocotb
      0.00ns INFO     cocotb.regression                  pytest not found, install it to enable better AssertionError messages
      0.00ns WARNING  py.warnings                        /home/hx3d/opt/hw4AI-ML/.venv-cocotb/lib64/python3.11/site-packages/cocotb/_init.py:102: DeprecationWarning: COCOTB_TESTCASE is deprecated in favor of COCOTB_TEST_FILTER
                                                           _setup_regression_manager()
      0.00ns INFO     cocotb                             Running tests
      0.00ns INFO     cocotb.regression                  running tb_top.test_benchmark (1/1)
-                                                            Measure steady-state LOAD / COMPUTE(hold) / DRAIN cycle counts and
- 53010.00ns INFO     cocotb.top                         PASS: benchmark measurement -- load=23.0 compute_hold=422.0 drain=16.0 tile_full=438.0 cycles (steady-state mean of 5 reps) -> /home/hx3d/opt/hw4AI-ML/project/m4/bench/bench_measured.csv
- 53010.00ns INFO     cocotb.regression                  tb_top.test_benchmark passed
- 53010.00ns INFO     cocotb.regression                  **************************************************************************************
+                                                            Measure steady-state load / stream_hold / stream_full cycle counts at
+143670.00ns INFO     cocotb.top                         PASS: benchmark measurement -- load=23.0 | B=1: hold=424.0 full=440.0 | B=32: hold=486.0 full=998.0 (~2.00 cyc/extra pixel) [steady mean of 5 reps] -> /home/hx3d/opt/hw4AI-ML/project/m4/bench/bench_measured.csv
+143670.00ns INFO     cocotb.regression                  tb_top.test_benchmark passed
+143670.00ns INFO     cocotb.regression                  **************************************************************************************
                                                         ** TEST                          STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
                                                         **************************************************************************************
-                                                        ** tb_top.test_benchmark          PASS       53010.00          12.66       4187.17  **
+                                                        ** tb_top.test_benchmark          PASS      143670.00          35.54       4043.01  **
                                                         **************************************************************************************
-                                                        ** TESTS=1 PASS=1 FAIL=0 SKIP=0              53010.00          12.67       4185.28  **
+                                                        ** TESTS=1 PASS=1 FAIL=0 SKIP=0             143670.00          35.54       4042.20  **
                                                         **************************************************************************************
 WARNING: /home/hx3d/opt/hw4AI-ML/project/m4/rtl/load_seq.sv:78: value is unhandled for priority or unique case statement
          Time: 0  Scope: top.u_lseq

@@ -33,8 +33,9 @@ accel_roof,562.341,51.2,
 cpu_roof,562.341,1020,
 accel_roof,1000,51.2,
 cpu_roof,1000,1020,
-accel_operating,0.91879,0.115141,measured: weight-reload schedule
-accel_bw_ceiling,0.91879,2.94013,pin-BW ceiling at operating AI
+accel_baseline,0.91879,0.114626,B=1 reload pathology (M3)
+accel_streaming,8.24286,3.1368,B=32 streaming (M4 design point)
+accel_stream_bw_ceiling,8.24286,26.3771,pin-BW ceiling at streaming AI
 accel_ideal_reuse,144.17,51.2,if perfect reuse -> compute bound
 cpu_baseline,144.17,380.285,measured CPU conv effective rate
 accel_ridge,16,51.2,accel ridge point AI*=peak/pin_bw

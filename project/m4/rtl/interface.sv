@@ -35,6 +35,8 @@
 // cfg_start       out  1                1-cycle pulse on CTRL.START
 // cfg_mode        out  1                0=COMPUTE, 1=LOAD_WEIGHTS;
 //                                       latched alongside CTRL.START
+// cfg_pix_count   out  16               streaming block length (1..PIX_BLOCK),
+//                                       continuous mirror of PIX_COUNT reg
 // status_busy     in   1                compute_core not in IDLE
 // status_done     in   1                compute_core 1-cycle DRAIN done
 // weights_loaded  in   1                weight_store sticky "loaded"
@@ -88,16 +90,26 @@
 //                              Carried forward from M2 unchanged --
 //                              tb_top uses it to sanity-check the
 //                              regfile path before doing real tiles.
+// 0x14  5     PIX_COUNT R/W    bits [15:0] = streaming block length B
+//                              (pixel columns streamed through the
+//                              resident weights in the next COMPUTE),
+//                              1..PIX_BLOCK. Resets to 1 (M3 single-
+//                              column behavior). NOT latched on START --
+//                              it is a plain register the host writes
+//                              BEFORE the COMPUTE START and holds stable
+//                              for the whole tile. compute_core clamps it
+//                              to [1, PIX_BLOCK]. bits [31:16] read 0.
 //
 // Host usage:
 //   1) write CTRL = 0x03 (START + MODE=LOAD_WEIGHTS)
 //   2) push BEATS_NEEDED weight beats on AXIS (driven by host master)
 //   3) poll STATUS until WEIGHTS_LOADED == 1 (and LOAD_ERR == 0)
 //   4) for each compute tile:
-//        a) write CTRL = 0x01 (START + MODE=COMPUTE)
-//        b) push 1 activation beat (M*DATA_W bits in low lanes)
-//        c) drain N result beats
-//        d) poll STATUS until DONE = 1, then go back to (a)
+//        a) write PIX_COUNT = B (streaming block length; 1 = M3 mode)
+//        b) write CTRL = 0x01 (START + MODE=COMPUTE)
+//        c) push B activation beats (each M*DATA_W bits in low lanes)
+//        d) drain B*N result beats (pixel-major, column-minor)
+//        e) poll STATUS until DONE = 1, then go back to (a)
 //
 // -------------------------------------------------------------------
 // Synthesizability
@@ -141,6 +153,7 @@ module interface_module #(
     output logic                          cfg_mode,
     output logic                          cfg_accum,
     output logic                          cfg_hold,
+    output logic [15:0]                   cfg_pix_count,
     input  logic                          status_busy,
     input  logic                          status_done,
     input  logic                          weights_loaded,
@@ -150,9 +163,10 @@ module interface_module #(
     // ==================================================================
     // Address decode
     // ==================================================================
-    localparam logic [AXIL_ADDR_W-1:0] ADDR_CTRL    = 'h00;
-    localparam logic [AXIL_ADDR_W-1:0] ADDR_STATUS  = 'h04;
-    localparam logic [AXIL_ADDR_W-1:0] ADDR_SCRATCH = 'h10;
+    localparam logic [AXIL_ADDR_W-1:0] ADDR_CTRL      = 'h00;
+    localparam logic [AXIL_ADDR_W-1:0] ADDR_STATUS    = 'h04;
+    localparam logic [AXIL_ADDR_W-1:0] ADDR_SCRATCH   = 'h10;
+    localparam logic [AXIL_ADDR_W-1:0] ADDR_PIX_COUNT = 'h14;
 
     logic [AXIL_ADDR_W-1:0] aw_word_addr;
     logic [AXIL_ADDR_W-1:0] ar_word_addr;
@@ -165,6 +179,11 @@ module interface_module #(
     logic [AXIL_DATA_W-1:0] scratch;
     logic                   done_latch;
     logic [AXIL_DATA_W-1:0] rdata_reg;
+    // M4 streaming block length (pixels/COMPUTE). Reset to 1 so a host
+    // that never writes PIX_COUNT gets the M3 single-column behavior.
+    // Continuously mirrored out as cfg_pix_count (held stable by the host
+    // across a COMPUTE; the core clamps it to [1, PIX_BLOCK]).
+    logic [15:0]            pix_count;
 
     // ==================================================================
     // Write FSM (W_IDLE, W_RESP)
@@ -188,6 +207,7 @@ module interface_module #(
             cfg_accum     <= 1'b0;
             cfg_hold      <= 1'b0;
             scratch       <= '0;
+            pix_count     <= 16'd1;
         end else begin
             cfg_start <= 1'b0;  // pulse default; overridden on CTRL.START
 
@@ -211,6 +231,13 @@ module interface_module #(
                                 if (s_axil_wstrb[i])
                                     scratch[i*8 +: 8] <= s_axil_wdata[i*8 +: 8];
                             end
+                        end
+                        if (aw_word_addr == ADDR_PIX_COUNT) begin
+                            // Low 16 bits only; the core clamps to PIX_BLOCK.
+                            if (s_axil_wstrb[0])
+                                pix_count[7:0]  <= s_axil_wdata[7:0];
+                            if (s_axil_wstrb[1])
+                                pix_count[15:8] <= s_axil_wdata[15:8];
                         end
                         s_axil_bvalid <= 1'b1;
                         w_state       <= W_RESP;
@@ -255,6 +282,7 @@ module interface_module #(
                                 status_busy
                             };
                             ADDR_SCRATCH: rdata_reg <= scratch;
+                            ADDR_PIX_COUNT: rdata_reg <= {16'd0, pix_count};
                             default:      rdata_reg <= '0;
                         endcase
                         s_axil_rvalid <= 1'b1;
@@ -274,6 +302,8 @@ module interface_module #(
     assign s_axil_arready = (r_state == R_IDLE);
     assign s_axil_rdata   = rdata_reg;
     assign s_axil_rresp   = 2'b00;
+
+    assign cfg_pix_count  = pix_count;
 
     // ==================================================================
     // STATUS.DONE sticky latch

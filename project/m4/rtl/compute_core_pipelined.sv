@@ -15,29 +15,58 @@
 //      cycles of internal pipeline (and L cycles of activation forward
 //      delay) instead of 1.
 //
+// -------------------------------------------------------------------
+// M4 streaming extension (PIX_BLOCK)
+// -------------------------------------------------------------------
+// The M3 core processed ONE activation column per COMPUTE: it paid the
+// full M*N-cycle LOAD (load_seq replays weight_store into the PE array)
+// plus the (M+N-1)*MAC_LATENCY pipeline fill to produce a single N-wide
+// result vector. For a tiled convolution that reloads weights on every
+// K-tile, that fixed overhead is amortized over exactly one pixel -- the
+// reload pathology that pinned the design at ~0.2% of peak (see
+// ../bench/benchmark.py and ../README.md).
+//
+// M4 streams a BLOCK of up to PIX_BLOCK pixel columns through the
+// resident weights in a single COMPUTE. The PE array is UNCHANGED -- it
+// is already a true weight-stationary systolic fabric (activations flow
+// left->right one column-hop per MAC_LATENCY, psums accumulate down each
+// column at the matched rate), so at steady state it absorbs one new
+// pixel column per cycle and the bottom of each column emits one pixel's
+// partial sum per cycle. Only the control + buffer depth changed:
+//
+//   - act_buf[M]        -> act_block[PIX_BLOCK][M]   (B columns resident)
+//   - result_buf[N]     -> result_buf[PIX_BLOCK][N]  (B pixels' fp32 partials)
+//   - the single-shot row feed / single capture cycle became a per-column
+//     stream indexed off compute_cycle (one column injected per cycle).
+//
+// cfg_pix_count (1..PIX_BLOCK) is the runtime block length, so the host
+// can issue a short final block for the P % PIX_BLOCK tail. With
+// cfg_pix_count == 1 every schedule below collapses bit-exactly to the
+// M3 single-column behavior (the streaming generalizations are written so
+// the c == 0 case is the original expression), which is the regression
+// firewall: all M3 cocotb tests must still pass.
+//
 // Capture-cycle derivation (full proof inline; the m2 schedule does
 // NOT generalize cleanly because m2 has chain-rate=1 but MAC-latency=2,
 // whereas pe_pipelined deliberately matches act-chain-rate to MAC
-// latency so the systolic alignment holds):
+// latency so the systolic alignment holds). Let c = pixel-column index
+// within the block (0..cfg_pix_count-1):
 //
-//   ACT_BEATS    = ceil(M / LANES)                    (AXIS beats to fill act_buf)
-//   inj_i        = ACT_BEATS + i * MAC_LATENCY        (row i act injection)
-//   ts[i][n]     = ACT_BEATS + (i + n + 1) * MAC_LATENCY
-//   column-n psum valid at:
-//       compute_cycle == ACT_BEATS + (M + n) * MAC_LATENCY
-//   result_buf[n] written ADD_STAGES later (the cross-tile accumulate
+//   ACT_BEATS    = ceil(M / LANES)                    (AXIS beats per column)
+//   inj_i(c)     = ACT_BEATS + c + i * MAC_LATENCY    (row i, column c injection)
+//   column-n psum for pixel c valid at:
+//       compute_cycle == ACT_BEATS + c + (M + n) * MAC_LATENCY
+//   result_buf[c][n] written ADD_STAGES later (the cross-tile accumulate
 //   adder, add_fp32_p2, sits between pe_psum_out[M-1][n] and result_buf):
-//       compute_cycle == ACT_BEATS + (M + n) * MAC_LATENCY + ADD_STAGES
-//   COMPUTE-exit at the last writeback (n = N-1):
-//       compute_cycle == ACT_BEATS + (M + N - 1) * MAC_LATENCY + ADD_STAGES
+//       compute_cycle == ACT_BEATS + c + (M + n) * MAC_LATENCY + ADD_STAGES
+//   STREAM-exit at the last writeback (c = cfg_pix_count-1, n = N-1):
+//       compute_cycle == ACT_BEATS + (cfg_pix_count-1)
+//                        + (M + N - 1) * MAC_LATENCY + ADD_STAGES
 //
-// For M = N = 4, LANES = 16, MAC_LATENCY = 5, ADD_STAGES = 2: ACT_BEATS
-// = 1, psums valid at 21, 26, 31, 36; result_buf writes at 23, 28, 33,
-// 38. COMPUTE-exit at 38, then DRAIN (or IDLE if cfg_hold).
-//
-// For M = N = 16, LANES = 16, MAC_LATENCY = 5, ADD_STAGES = 2: ACT_BEATS
-// = 1, last psum at 1 + (16+15)*5 = 156, last result_buf write at 158.
-// COMPUTE-exit at 158.
+// For M = N = 16, LANES = 16, MAC_LATENCY = 5, ADD_STAGES = 2,
+// cfg_pix_count = 1: ACT_BEATS = 1, last psum at 1 + (16+15)*5 = 156, last
+// result_buf write at 158 -- identical to the M3 COMPUTE_MAX. For
+// cfg_pix_count = B the stream simply runs B-1 cycles longer.
 //
 // LOAD-broadcast staging (added after the 300 MHz post-CTS attempt at
 // project/m3/synth/runs/RUN_2026-05-24_01-01-50/ pinned u_core.state[1]
@@ -47,20 +76,20 @@
 //
 //   wt_load_reg[i][j] <= (state == LOAD) && (wt_count == i*N + j)
 //   clr_psum_reg[i][j] <= (state == LOAD)
-//   wt_data_ext_d     <= wt_data_ext
 //
 // Each PE consumes its own dedicated 1-bit flop, so synthesis can place
 // these flops near their consumer instead of routing one combinational
 // net to all M*N PEs. The LOAD-side schedule slips by exactly 1 cycle:
 //
 //   Old: PE[i][j] sampled wt_data on cycle i*N + j + 1 (during LOAD).
-//   New: PE[i][j] samples wt_data_ext_d on cycle i*N + j + 2 (last load
-//        for PE[M-1][N-1] now lands on COMPUTE cycle 0, the act_buf
-//        latch cycle, which is many cycles before that PE's MAC actually
-//        reads its weight at compute_cycle ~ 1 + i*MAC_LATENCY + 1).
+//   New: PE[i][j] samples wt_data_ext on cycle i*N + j + 2 (last load
+//        for PE[M-1][N-1] now lands on STREAM cycle 0, the act-load
+//        cycle, which is many cycles before that PE's MAC actually reads
+//        its weight at compute_cycle ~ 1 + i*MAC_LATENCY + 1).
 //
-// Activation-side schedule is untouched (act_buf latch + row_act_feed
-// + result capture timing all unchanged from the pre-staging design).
+// Activation-side schedule is untouched in shape (act-load latch +
+// row_act_feed + result capture timing all generalize the pre-staging
+// design over the pixel-column index c).
 
 module compute_core_pipelined #(
     parameter int DATA_W      = 16,
@@ -83,7 +112,16 @@ module compute_core_pipelined #(
     // depths, and remember pe_pipelined.sv's localparam MUL_STAGES is a
     // separate manual contract (not parameter pass-through) -- keep the
     // two in sync by hand.
-    parameter int MAC_LATENCY = 5
+    parameter int MAC_LATENCY = 5,
+
+    // M4 streaming block depth: the maximum number of pixel columns
+    // streamed through the resident weights per COMPUTE. Sizes act_block
+    // (PIX_BLOCK*M bf16) and result_buf (PIX_BLOCK*N fp32). PIX_BLOCK = 1
+    // recovers the exact M3 single-column core. Larger PIX_BLOCK amortizes
+    // the M*N-cycle weight reload + pipeline fill over more pixels (see
+    // header) at the cost of register area -- the dominant flop-growth
+    // knob, deliberately a parameter so it can be dialed for P&R.
+    parameter int PIX_BLOCK   = 32
 ) (
     input  logic                          clk,
     input  logic                          rst,
@@ -106,12 +144,17 @@ module compute_core_pipelined #(
     //                    sums (first K-tile, or a standalone GEMM).
     //   cfg_accum = 1 -> add this tile's column sums into result_buf
     //                    (subsequent K-tiles of a tiled convolution).
-    //   cfg_hold  = 0 -> drain the N results after capture (last
+    //   cfg_hold  = 0 -> drain the results after capture (last
     //                    K-tile / standalone GEMM).
     //   cfg_hold  = 1 -> skip DRAIN, return to IDLE holding the fp32
     //                    partials in result_buf for the next tile.
     input  logic                          cfg_accum,
     input  logic                          cfg_hold,
+
+    // Streaming block length for THIS COMPUTE (1..PIX_BLOCK). Held stable
+    // by the host (written before CTRL.START); clamped internally so an
+    // out-of-range value can never index past the buffers.
+    input  logic [15:0]                   cfg_pix_count,
 
     output logic                          status_busy,
     output logic                          status_done,
@@ -125,7 +168,7 @@ module compute_core_pipelined #(
     typedef enum logic [1:0] {
         IDLE    = 2'd0,
         LOAD    = 2'd1,
-        COMPUTE = 2'd2,
+        COMPUTE = 2'd2,   // streams cfg_pix_count columns (M4) / 1 column (M3)
         DRAIN   = 2'd3
     } state_t;
 
@@ -133,30 +176,62 @@ module compute_core_pipelined #(
 
     localparam int WT_CNT_W      = $clog2(M*N + 1);
     // AXIS carries LANES bf16 lanes per beat; M may exceed LANES (48x48
-    // with LANES=16 needs 3 beats to fill act_buf before MAC starts).
+    // with LANES=16 needs 3 beats to fill one column before MAC starts).
     localparam int ACT_BEATS     = (M + LANES - 1) / LANES;
     // Latency of the result-stage accumulate adder (add_fp32_p2 has 2
-    // pipeline stages). Column n's psum is valid at compute_cycle ts[n];
+    // pipeline stages). Column n's psum is valid at compute_cycle ts[c][n];
     // the accumulate result lands in result_buf ADD_STAGES cycles later.
     // Keep in sync with project/m3/rtl/add_fp32_p2.sv's stage count.
     localparam int ADD_STAGES    = 2;
-    // COMPUTE counts up to the LAST result-capture write, which is now
-    // ADD_STAGES after the last column's psum is valid (the accumulate
-    // adder sits between pe_psum_out[M-1][n] and result_buf[n]):
-    //   ACT_BEATS + (M + N - 1)*MAC_LATENCY + ADD_STAGES
-    // (the n=N-1 psum lands at the old COMPUTE_MAX; +ADD_STAGES is the
-    // adder drain). add slack so the compare doesn't roll over.
-    localparam int COMPUTE_MAX   = ACT_BEATS + (M + N - 1) * MAC_LATENCY
-                                   + ADD_STAGES;
-    localparam int COMPUTE_CNT_W = $clog2(COMPUTE_MAX + 2);
-    localparam int DRAIN_CNT_W   = $clog2(N + 1);
+
+    // Pixel-block counter width (holds 0..PIX_BLOCK).
+    localparam int PIX_CNT_W     = (PIX_BLOCK <= 1) ? 1 : $clog2(PIX_BLOCK + 1);
+
+    // STREAM runs up to the LAST result-capture write. The worst case
+    // (for sizing compute_cycle) is a full PIX_BLOCK block:
+    //   ACT_BEATS + (PIX_BLOCK-1) + (M+N-1)*MAC_LATENCY + ADD_STAGES
+    localparam int STREAM_MAX_MAX = ACT_BEATS + (PIX_BLOCK - 1)
+                                    + (M + N - 1) * MAC_LATENCY + ADD_STAGES;
+    localparam int COMPUTE_CNT_W  = $clog2(STREAM_MAX_MAX + 2);
+    // Drain walks cfg_pix_count * N beats; column index is 0..N-1.
+    localparam int DRAIN_COL_W    = (N <= 1) ? 1 : $clog2(N);
 
     logic [WT_CNT_W-1:0]      wt_count;
     logic [COMPUTE_CNT_W-1:0] compute_cycle;
-    logic [DRAIN_CNT_W-1:0]   drain_cycle;
+
+    // Activation-load sub-phase counters (replace the M3 flat act_beat_cnt
+    // so B columns load without a runtime divide): act_col selects the
+    // column being filled, act_beat_in_col walks the ACT_BEATS beats of
+    // that column.
     localparam int ACT_BEAT_CNT_W = (ACT_BEATS <= 1) ? 1 : $clog2(ACT_BEATS + 1);
-    logic [ACT_BEAT_CNT_W-1:0] act_beat_cnt;
-    logic                        act_load_done;
+    logic [PIX_CNT_W-1:0]      act_col;
+    logic [ACT_BEAT_CNT_W-1:0] act_beat_in_col;
+    logic                      act_load_done;
+
+    // Drain counters (pixel-major, column-minor).
+    logic [PIX_CNT_W-1:0]   drain_pix;
+    logic [DRAIN_COL_W-1:0] drain_col;
+
+    // ------------------------------------------------------------------
+    // Clamp cfg_pix_count to [1, PIX_BLOCK] so a stray host value cannot
+    // index past act_block / result_buf. 0 is treated as 1.
+    // ------------------------------------------------------------------
+    logic [PIX_CNT_W-1:0] eff_pix_count;
+    always_comb begin
+        if (cfg_pix_count == 16'd0)
+            eff_pix_count = PIX_CNT_W'(1);
+        else if (cfg_pix_count > 16'(PIX_BLOCK))
+            eff_pix_count = PIX_CNT_W'(PIX_BLOCK);
+        else
+            eff_pix_count = cfg_pix_count[PIX_CNT_W-1:0];
+    end
+
+    // STREAM-exit cycle for this block (runtime; depends on eff_pix_count).
+    logic [COMPUTE_CNT_W-1:0] stream_max;
+    always_comb begin
+        stream_max = COMPUTE_CNT_W'(ACT_BEATS + (int'(eff_pix_count) - 1)
+                     + (M + N - 1) * MAC_LATENCY + ADD_STAGES);
+    end
 
     always_ff @(posedge clk or posedge rst) begin
         if (rst)
@@ -173,11 +248,13 @@ module compute_core_pipelined #(
             // cfg_hold: intermediate K-tile -> skip DRAIN, hold partials
             // in result_buf and return to IDLE for the next accumulating
             // tile. cfg_hold = 0: drain (last K-tile / standalone GEMM).
-            COMPUTE: if (compute_cycle == COMPUTE_CNT_W'(COMPUTE_MAX)) begin
+            COMPUTE: if (compute_cycle == stream_max) begin
                          if (cfg_hold) next_state = IDLE;
                          else          next_state = DRAIN;
                      end
-            DRAIN:   if (drain_cycle == DRAIN_CNT_W'(N - 1) && res_ready)    next_state = IDLE;
+            DRAIN:   if (drain_pix == PIX_CNT_W'(int'(eff_pix_count) - 1)
+                         && drain_col == DRAIN_COL_W'(N - 1)
+                         && res_ready)                                       next_state = IDLE;
             default:                                                         next_state = IDLE;
         endcase
     end
@@ -203,51 +280,81 @@ module compute_core_pipelined #(
             compute_cycle <= '0;
     end
 
+    // Activation-load counters: walk ACT_BEATS beats per column, advancing
+    // act_col after each full column, until all eff_pix_count columns are
+    // resident. act_ready drops the moment act_load_done asserts, so the
+    // counters never run past the block.
     always_ff @(posedge clk or posedge rst) begin
-        if (rst)
-            act_beat_cnt <= '0;
-        else if (state != COMPUTE)
-            act_beat_cnt <= '0;
-        else if (act_valid && act_ready)
-            act_beat_cnt <= act_beat_cnt + 1'b1;
+        if (rst) begin
+            act_col         <= '0;
+            act_beat_in_col <= '0;
+        end else if (state != COMPUTE) begin
+            act_col         <= '0;
+            act_beat_in_col <= '0;
+        end else if (act_valid && act_ready) begin
+            if (act_beat_in_col == ACT_BEAT_CNT_W'(ACT_BEATS - 1)) begin
+                act_beat_in_col <= '0;
+                act_col         <= act_col + 1'b1;
+            end else begin
+                act_beat_in_col <= act_beat_in_col + 1'b1;
+            end
+        end
     end
 
-    assign act_load_done = (act_beat_cnt == ACT_BEAT_CNT_W'(ACT_BEATS));
-
-    always_ff @(posedge clk or posedge rst) begin
-        if (rst)
-            drain_cycle <= '0;
-        else if (state == DRAIN && res_ready)
-            drain_cycle <= drain_cycle + 1'b1;
-        else if (state != DRAIN)
-            drain_cycle <= '0;
-    end
-
-    // ==================================================================
-    // Activation buffer (filled one AXIS beat per successful handshake)
-    // ==================================================================
-    logic [DATA_W-1:0] act_buf [0:M-1];
+    assign act_load_done = (act_col == eff_pix_count);
 
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
-            for (int i = 0; i < M; i++)
-                act_buf[i] <= '0;
+            drain_pix <= '0;
+            drain_col <= '0;
+        end else if (state == DRAIN && res_ready) begin
+            if (drain_col == DRAIN_COL_W'(N - 1)) begin
+                drain_col <= '0;
+                drain_pix <= drain_pix + 1'b1;
+            end else begin
+                drain_col <= drain_col + 1'b1;
+            end
+        end else if (state != DRAIN) begin
+            drain_pix <= '0;
+            drain_col <= '0;
+        end
+    end
+
+    // ==================================================================
+    // Activation block buffer (PIX_BLOCK columns x M rows)
+    //
+    // Filled one AXIS beat per successful handshake during the COMPUTE
+    // load sub-phase: beat (act_col, act_beat_in_col) writes LANES bf16
+    // lanes into column act_col at row offset act_beat_in_col*LANES. For
+    // the 16x16 design (ACT_BEATS = 1) each beat is one full column.
+    // ==================================================================
+    logic [DATA_W-1:0] act_block [0:PIX_BLOCK-1][0:M-1];
+
+    always_ff @(posedge clk or posedge rst) begin
+        if (rst) begin
+            for (int c = 0; c < PIX_BLOCK; c++)
+                for (int i = 0; i < M; i++)
+                    act_block[c][i] <= '0;
         end else if (state == COMPUTE && act_valid && act_ready) begin
             for (int l = 0; l < LANES; l++) begin
                 int idx;
-                idx = act_beat_cnt * LANES + l;
+                idx = int'(act_beat_in_col) * LANES + l;
                 if (idx < M)
-                    act_buf[idx] <= act_data[l*DATA_W +: DATA_W];
+                    act_block[act_col][idx] <= act_data[l*DATA_W +: DATA_W];
             end
         end
     end
 
     // ==================================================================
-    // Activation feed (row-skewed by MAC_LATENCY)
+    // Activation feed (row-skewed by MAC_LATENCY, column-streamed)
     //
-    // Row i sees x[i] exactly once during COMPUTE, at compute_cycle
-    // == 1 + i * MAC_LATENCY. All other cycles see 0. With MAC_LATENCY
-    // = 1 this collapses to the m2 schedule (compute_cycle == i + 1).
+    // Row i sees pixel-column c at compute_cycle == ACT_BEATS + c +
+    // i*MAC_LATENCY. Equivalently, at a given compute_cycle the column
+    // index presented to row i is c_i = compute_cycle - ACT_BEATS -
+    // i*MAC_LATENCY; when that is in [0, eff_pix_count) row i is fed
+    // act_block[c_i][i], else 0. With eff_pix_count = 1 the only in-range
+    // case is c_i == 0 at compute_cycle == ACT_BEATS + i*MAC_LATENCY --
+    // the exact M3 single-column schedule.
     // ==================================================================
     logic [DATA_W-1:0] row_act_feed [0:M-1];
 
@@ -256,8 +363,10 @@ module compute_core_pipelined #(
             row_act_feed[i] = '0;
         if (state == COMPUTE) begin
             for (int i = 0; i < M; i++) begin
-                if (compute_cycle == COMPUTE_CNT_W'(ACT_BEATS + i * MAC_LATENCY))
-                    row_act_feed[i] = act_buf[i];
+                int c_i;
+                c_i = int'(compute_cycle) - ACT_BEATS - i * MAC_LATENCY;
+                if (c_i >= 0 && c_i < int'(eff_pix_count))
+                    row_act_feed[i] = act_block[c_i][i];
             end
         end
     end
@@ -325,7 +434,7 @@ module compute_core_pipelined #(
     end
 
     // ==================================================================
-    // PE grid (M rows x N cols), pipelined
+    // PE grid (M rows x N cols), pipelined -- UNCHANGED from M3.
     // ==================================================================
     logic [DATA_W-1:0] pe_act_out  [0:M-1][0:N-1];
     logic [31:0]       pe_psum_out [0:M-1][0:N-1];
@@ -363,40 +472,53 @@ module compute_core_pipelined #(
     endgenerate
 
     // ==================================================================
-    // Result capture + cross-tile accumulate
+    // Result capture + cross-tile accumulate (streamed over the block)
     //
-    // y[n] (this tile's column-n sum) is valid in PE[M-1][n].psum_out at
-    //   ts[n] = ACT_BEATS + (M + n) * MAC_LATENCY
-    // Instead of latching it straight into result_buf, it passes through
-    // a per-column fp32 adder (add_fp32_p2, ADD_STAGES = 2) whose other
-    // operand is the running partial sum:
+    // The bottom PE of column n emits a STREAM of column sums, one pixel
+    // per cycle: pe_psum_out[M-1][n] carries pixel c at
+    //   compute_cycle == ACT_BEATS + c + (M + n)*MAC_LATENCY            (ts)
+    // The per-column adder (add_fp32_p2, ADD_STAGES = 2) reads the matching
+    // running partial and writes it back ADD_STAGES later:
     //
-    //   acc_a[n] = cfg_accum ? result_buf[n] : 32'd0
+    //   c_rd(n) = compute_cycle - ACT_BEATS - (M+n)*MAC_LATENCY   (read idx)
+    //   acc_a[n] = (cfg_accum && c_rd in [0,cnt)) ? result_buf[c_rd][n] : 0
     //   acc_out[n] = acc_a[n] + pe_psum_out[M-1][n]   (2-cycle pipeline)
-    //   result_buf[n] <= acc_out[n]   when compute_cycle == ts[n] + ADD_STAGES
+    //   c_wr(n) = c_rd(n) - ADD_STAGES                           (write idx)
+    //   result_buf[c_wr][n] <= acc_out[n]   when c_wr in [0,cnt)
     //
     // cfg_accum = 0 makes the add "0 + psum = psum" (overwrite, bit-exact
     // -- the zero operand contributes a zero mantissa, so the sum is the
-    // other operand verbatim), so a standalone GEMM behaves exactly as
-    // the pre-accumulate design, just 2 cycles later. cfg_accum = 1 sums
-    // this tile into the resident fp32 partial -- true fp32 cross-tile
-    // accumulation, with the bf16 rounding deferred to the draining tile.
+    // other operand verbatim). cfg_accum = 1 sums this K-tile into the
+    // resident fp32 partial for the SAME pixel -- true fp32 cross-tile
+    // accumulation, bf16 rounding deferred to the draining tile.
     //
-    // No read/write hazard on result_buf[n]: it is read (as acc_a[n]) at
-    // ts[n] and written at ts[n] + ADD_STAGES; consecutive columns' ts
-    // are MAC_LATENCY (5) apart, larger than ADD_STAGES (2), and each
-    // column owns its own adder, so a column is never mid-flight when its
-    // own writeback occurs. result_buf is reset-only (NOT cleared on
-    // COMPUTE entry) so partials persist across K-tiles.
+    // No read/write hazard on result_buf[c][n]: within one STREAM each
+    // (c,n) is read exactly once (at ts) and written exactly once (at
+    // ts+ADD_STAGES); consecutive cycles on a column touch consecutive c
+    // (different addresses), so the per-column adder never reads and
+    // writes the same entry, and the cfg_accum read always sees the prior
+    // K-tile's value (this K-tile's write to that entry is ADD_STAGES
+    // later). Across K-tiles the gap is the whole LOAD (M*N cycles) +
+    // fill, so the prior partial is long settled. result_buf is reset-only
+    // (NOT cleared on COMPUTE entry) so partials persist across K-tiles.
+    // With eff_pix_count = 1 this is the M3 single-pixel capture verbatim
+    // (c_rd == 0 at ts, c_wr == 0 at ts+ADD_STAGES).
     // ==================================================================
-    logic [31:0] result_buf [0:N-1];
+    logic [31:0] result_buf [0:PIX_BLOCK-1][0:N-1];
     logic [31:0] acc_a      [0:N-1];
     logic [31:0] acc_out    [0:N-1];
 
     genvar gn;
     generate
         for (gn = 0; gn < N; gn++) begin: g_acc
-            assign acc_a[gn] = cfg_accum ? result_buf[gn] : 32'd0;
+            always_comb begin
+                int c_rd;
+                c_rd = int'(compute_cycle) - ACT_BEATS - (M + gn) * MAC_LATENCY;
+                if (cfg_accum && c_rd >= 0 && c_rd < int'(eff_pix_count))
+                    acc_a[gn] = result_buf[c_rd][gn];
+                else
+                    acc_a[gn] = 32'd0;
+            end
 
             add_fp32_p2 u_acc (
                 .clk (clk),
@@ -410,23 +532,29 @@ module compute_core_pipelined #(
 
     always_ff @(posedge clk or posedge rst) begin
         if (rst) begin
-            for (int n = 0; n < N; n++)
-                result_buf[n] <= '0;
+            for (int c = 0; c < PIX_BLOCK; c++)
+                for (int n = 0; n < N; n++)
+                    result_buf[c][n] <= '0;
         end else if (state == COMPUTE) begin
             for (int n = 0; n < N; n++) begin
-                if (compute_cycle == COMPUTE_CNT_W'(ACT_BEATS + (M + n) * MAC_LATENCY + ADD_STAGES))
-                    result_buf[n] <= acc_out[n];
+                int c_wr;
+                c_wr = int'(compute_cycle) - ACT_BEATS
+                       - (M + n) * MAC_LATENCY - ADD_STAGES;
+                if (c_wr >= 0 && c_wr < int'(eff_pix_count))
+                    result_buf[c_wr][n] <= acc_out[n];
             end
         end
     end
 
     // ==================================================================
-    // Drain serializer (unchanged)
+    // Drain serializer: walk result_buf pixel-major, column-minor, one
+    // bf16 result per accepted beat (eff_pix_count * N beats total). With
+    // eff_pix_count = 1 this is the M3 N-beat drain verbatim.
     // ==================================================================
     logic [OUT_W-1:0] drain_word;
 
     fp32_to_bf16 u_drain (
-        .in  (result_buf[drain_cycle]),
+        .in  (result_buf[drain_pix][drain_col]),
         .out (drain_word)
     );
 
@@ -438,21 +566,24 @@ module compute_core_pipelined #(
 
     assign res_valid = (state == DRAIN);
     assign res_last  = (state == DRAIN) &&
-                       (drain_cycle == DRAIN_CNT_W'(N - 1));
+                       (drain_pix == PIX_CNT_W'(int'(eff_pix_count) - 1)) &&
+                       (drain_col == DRAIN_COL_W'(N - 1));
 
     // ==================================================================
     // Internal-API status / handshake
     //
-    // act_ready: m3 always uses external weights, so LOAD does not
-    // consume from act_data; assert during the first ACT_BEATS cycles of
-    // COMPUTE to fill act_buf from the ingress FIFO (one AXIS beat per
-    // cycle when the host has data ready).
+    // act_ready: m3/m4 always use external weights, so LOAD does not
+    // consume from act_data; assert through the COMPUTE load sub-phase to
+    // fill act_block from the ingress FIFO (one AXIS beat per cycle when
+    // the host has data ready), dropping once all eff_pix_count columns
+    // are resident.
     // ==================================================================
     assign act_ready   = (state == COMPUTE) && !act_load_done;
 
     assign status_busy = (state != IDLE);
     assign status_done = (state == DRAIN) &&
-                         (drain_cycle == DRAIN_CNT_W'(N - 1)) &&
+                         (drain_pix == PIX_CNT_W'(int'(eff_pix_count) - 1)) &&
+                         (drain_col == DRAIN_COL_W'(N - 1)) &&
                          res_ready;
 
 endmodule

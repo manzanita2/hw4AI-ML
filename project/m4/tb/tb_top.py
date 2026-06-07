@@ -82,6 +82,11 @@ OUT_W       = 16
 LANES       = 16
 M           = int(os.environ.get("M", "16"))
 N           = int(os.environ.get("N", "16"))
+# M4 streaming block depth. MUST equal top.sv's PIX_BLOCK default (Icarus
+# cannot override top params from the CLI), single-sourced via the Makefile.
+# Tests stream up to PIX_BLOCK pixel columns per COMPUTE; PIX_COUNT=1 paths
+# exercise the M3 single-column reduction (the bit-exact regression).
+PIX_BLOCK   = int(os.environ.get("PIX_BLOCK", "32"))
 AXIS_DATA_W = 256
 
 OUT_MASK    = (1 << OUT_W) - 1
@@ -93,9 +98,10 @@ WEIGHT_BEATS = (M * N + LANES - 1) // LANES   # 16 @ 16x16 / LANES=16
 ACT_BEATS    = (M + LANES - 1) // LANES        # 1 @ M=16 / LANES=16
 
 # Address map (see project/m3/rtl/interface.sv)
-ADDR_CTRL    = 0x00
-ADDR_STATUS  = 0x04
-ADDR_SCRATCH = 0x10
+ADDR_CTRL      = 0x00
+ADDR_STATUS    = 0x04
+ADDR_SCRATCH   = 0x10
+ADDR_PIX_COUNT = 0x14   # M4 streaming block length (1..PIX_BLOCK), reset 1
 
 CTRL_START          = 1 << 0
 CTRL_MODE_LOAD      = 1 << 1
@@ -331,7 +337,14 @@ async def host_load_weights(dut, B: list[list[float]]) -> None:
 
 async def host_compute_tile(dut, x: list[float]) -> list[float]:
     """COMPUTE handshake: write CTRL=0x01, push ACT_BEATS activation
-    beats, drain N result beats. Returns the N bf16-decoded floats."""
+    beats, drain N result beats. Returns the N bf16-decoded floats.
+
+    Single-pixel path (PIX_COUNT=1) -- the M3-equivalent reduction that is
+    the bit-exact regression for the streaming core. PIX_COUNT is written
+    explicitly so the helper is self-contained regardless of prior tests.
+    """
+    bresp = await axil_write(dut, ADDR_PIX_COUNT, 1)
+    assert bresp == AXIL_OKAY, f"PIX_COUNT bresp: 0x{bresp:X}"
     bresp = await axil_write(dut, ADDR_CTRL, CTRL_START | CTRL_MODE_COMPUTE)
     assert bresp == AXIL_OKAY, f"COMPUTE bresp: 0x{bresp:X}"
 
@@ -380,6 +393,10 @@ async def host_compute_accumulate(dut, x: list[float], *,
       hold=False -> last K-tile (or standalone GEMM): drain the N result
                     beats and return the N bf16-decoded floats.
     """
+    # Single-pixel path (PIX_COUNT=1): the M3-equivalent per-tile reduction.
+    bresp = await axil_write(dut, ADDR_PIX_COUNT, 1)
+    assert bresp == AXIL_OKAY, f"PIX_COUNT bresp: 0x{bresp:X}"
+
     ctrl = CTRL_START | CTRL_MODE_COMPUTE
     if accum:
         ctrl |= CTRL_ACCUM
@@ -402,6 +419,61 @@ async def host_compute_accumulate(dut, x: list[float], *,
     beats = await axis_drain_n(dut, N)
     await _wait_idle(dut)
     return [bf16_to_f32(unpack_result_beat(b)) for b, _ in beats]
+
+
+async def host_compute_stream(dut, cols: list[list[float]], *,
+                              accum: bool, hold: bool) -> list[list[float]] | None:
+    """M4 streaming COMPUTE: stream len(cols) pixel columns through the
+    resident weights in a single COMPUTE.
+
+    `cols` is a list of B activation columns (each M floats), 1 <= B <=
+    PIX_BLOCK. Writes PIX_COUNT=B, then CTRL = START | COMPUTE | (ACCUM?) |
+    (HOLD?), pushes B*ACT_BEATS activation beats (column-major: all
+    ACT_BEATS beats of column 0, then column 1, ...), then:
+      hold=True  -> intermediate K-tile: core holds B*N fp32 partials in
+                    result_buf, no drain. Returns None.
+      hold=False -> drain B*N result beats (pixel-major, column-minor) and
+                    return a list of B rows, each N bf16-decoded floats.
+    """
+    count = len(cols)
+    assert 1 <= count <= PIX_BLOCK, f"stream block {count} out of [1, {PIX_BLOCK}]"
+
+    bresp = await axil_write(dut, ADDR_PIX_COUNT, count)
+    assert bresp == AXIL_OKAY, f"PIX_COUNT bresp: 0x{bresp:X}"
+
+    ctrl = CTRL_START | CTRL_MODE_COMPUTE
+    if accum:
+        ctrl |= CTRL_ACCUM
+    if hold:
+        ctrl |= CTRL_HOLD
+
+    bresp = await axil_write(dut, ADDR_CTRL, ctrl)
+    assert bresp == AXIL_OKAY, f"STREAM(B={count},accum={accum},hold={hold}) bresp: 0x{bresp:X}"
+
+    # Push every column's ACT_BEATS beats back to back. act_ready throttles
+    # via the ingress FIFO, so this is correct even when count > FIFO depth.
+    for c in range(count):
+        for b in range(ACT_BEATS):
+            beat = pack_activation_beat(cols[c], b)
+            # tlast on the final beat of the final column of the block.
+            tlast = 1 if (c == count - 1 and b == ACT_BEATS - 1) else 0
+            await axis_push_beat(dut, beat, tlast=tlast)
+
+    if hold:
+        await _wait_idle(dut)
+        return None
+
+    beats = await axis_drain_n(dut, count * N)
+    await _wait_idle(dut)
+
+    # Drain order is pixel-major, column-minor: beat (p*N + n) = pixel p,
+    # output column n.
+    results: list[list[float]] = []
+    for p in range(count):
+        row = [bf16_to_f32(unpack_result_beat(beats[p * N + n][0]))
+               for n in range(N)]
+        results.append(row)
+    return results
 
 
 # =======================================================================
@@ -815,6 +887,156 @@ async def test_conv_e2e(dut):
 
 
 # =======================================================================
+# Test 6b (HEADLINE M4): streaming a block of pixels through one slab
+# =======================================================================
+@cocotb.test()
+async def test_stream_block(dut):
+    """M4 STREAMING headline: stream a block of B > 1 pixel columns through
+    one resident MxN weight slab in a SINGLE COMPUTE, bit-exact vs an
+    independent bf16 reference.
+
+    test_gemm_tile_e2e already covers B = 1. This proves the B > 1
+    generalizations all line up: the skewed per-column activation feed
+    (one column injected per cycle), the per-column result capture indexed
+    by pixel across the block, and the pixel-major / column-minor drain
+    order. One weight reload + one pipeline fill now serve all B pixels --
+    the entire point of the streaming core.
+    """
+    cocotb.start_soon(Clock(dut.clk, CLK_PERIOD_NS, unit="ns").start())
+    _zero_all_inputs(dut)
+    await _reset(dut)
+
+    if (M, N) != (16, 16):
+        dut._log.info(
+            f"NOTE: stream-block test is fixed at the 16x16 tile design "
+            f"point; M=N={M},{N} -> skipping (not a failure)."
+        )
+        return
+
+    n_pix = min(8, PIX_BLOCK)
+    Bmat = _make_weight_matrix(0x5712)
+    rng = random.Random(0x57EA)
+    pool = [-2.0, -1.0, -0.5, 0.0, 0.5, 1.0, 2.0]
+    cols = [[rng.choice(pool) for _ in range(M)] for _ in range(n_pix)]
+    y_ref = [_gemm_row_reference(c, Bmat) for c in cols]
+
+    dut._log.info(
+        f"stream block: B={n_pix} pixels x N={N} cols through one "
+        f"{M}x{N} slab (PIX_BLOCK={PIX_BLOCK})"
+    )
+
+    await host_load_weights(dut, Bmat)
+    y_dut = await host_compute_stream(dut, cols, accum=False, hold=False)
+    assert y_dut is not None, "stream block returned no results"
+
+    fails = []
+    for p in range(n_pix):
+        for n in range(N):
+            if bf16_bits(y_dut[p][n]) != bf16_bits(y_ref[p][n]):
+                fails.append((p, n, y_dut[p][n], y_ref[p][n]))
+    if fails:
+        for p, n, dv, rv in fails[:8]:
+            dut._log.error(
+                f"  MISS y[pix={p}][{n}]: dut={dv} (0x{bf16_bits(dv):04X}) "
+                f"ref={rv} (0x{bf16_bits(rv):04X})"
+            )
+        assert False, f"stream block: {len(fails)}/{n_pix*N} mismatches"
+
+    dut._log.info(
+        f"PASS: streamed {n_pix}-pixel block -- all {n_pix}x{N} outputs "
+        f"bit-exact vs bf16 reference (one weight load + one fill)"
+    )
+
+
+# =======================================================================
+# Test 6c (HEADLINE M4): streamed tiled conv (block + cross-K accumulate)
+# =======================================================================
+@cocotb.test()
+async def test_conv_stream_e2e(dut):
+    """Streaming tiled convolution: the SAME small im2col -> GEMM conv as
+    test_conv_e2e, but all P output pixels are STREAMED as one block per
+    K-tile (PIX_COUNT=P), with on-chip PER-PIXEL fp32 cross-tile
+    accumulation.
+
+    Where test_conv_e2e pays the M*N weight reload + pipeline fill once
+    per (pixel, K-tile) = P*KT times, this pays it once per K-tile = KT
+    times, serving all P pixels per reload. It must produce the SAME
+    bit-exact result as the single-pixel path (compared to the same fp64
+    `_conv_reference`), which is the streaming-correctness guarantee under
+    real cross-K accumulation.
+    """
+    cocotb.start_soon(Clock(dut.clk, CLK_PERIOD_NS, unit="ns").start())
+    _zero_all_inputs(dut)
+    await _reset(dut)
+
+    if (M, N) != (16, 16):
+        dut._log.info(
+            f"NOTE: streamed conv test is fixed at the 16x16 tile design "
+            f"point; M=N={M},{N} -> skipping (not a failure)."
+        )
+        return
+
+    hout, wout, K = _conv_dims()
+    P  = hout * wout
+    KT = K // M
+    assert K % M == 0, f"K={K} not a multiple of M={M}"
+    assert CONV_COUT == N, f"COUT={CONV_COUT} must equal N={N} (1 N-tile)"
+    assert P <= PIX_BLOCK, (
+        f"P={P} output pixels exceed PIX_BLOCK={PIX_BLOCK}; would need "
+        f"multiple pixel blocks (the real RAFT flow tiles P, see benchmark.py)"
+    )
+
+    dut._log.info(
+        f"streamed conv: Cin={CONV_CIN} Cout={CONV_COUT} {CONV_KH}x{CONV_KW} "
+        f"{CONV_H}x{CONV_W} -> {hout}x{wout}; K={K} -> {KT} K-tiles, "
+        f"P={P} pixels streamed/block, tile={M}x{N}"
+    )
+
+    X, Wt = _make_conv_tensors(0xC04F)     # same seed as test_conv_e2e
+    Xcol  = _im2col(X)
+    W2d   = _weight_matrix_2d(Wt)
+    Y_ref = _conv_reference(Xcol, W2d)
+
+    Y_dut: list[list[float]] | None = None
+    for kt in range(KT):
+        Bmat = [[W2d[kt * M + i][j] for j in range(N)] for i in range(M)]
+        cols = [[Xcol[p][kt * M + i] for i in range(M)] for p in range(P)]
+
+        await host_load_weights(dut, Bmat)
+        y = await host_compute_stream(
+            dut, cols,
+            accum=(kt > 0),
+            hold=(kt < KT - 1),
+        )
+        if kt == KT - 1:
+            Y_dut = y
+
+    assert Y_dut is not None, "streamed conv produced no drained block"
+
+    fails = []
+    for p in range(P):
+        for cout in range(N):
+            if bf16_bits(Y_dut[p][cout]) != bf16_bits(Y_ref[p][cout]):
+                fails.append((p, cout, Y_dut[p][cout], Y_ref[p][cout]))
+    if fails:
+        for p, c, dv, rv in fails[:8]:
+            dut._log.error(
+                f"  MISS Y[p={p}][cout={c}]: dut={dv} (0x{bf16_bits(dv):04X}) "
+                f"ref={rv} (0x{bf16_bits(rv):04X})"
+            )
+        assert False, (
+            f"streamed conv: {len(fails)}/{P*N} outputs mismatched "
+            f"({KT} K-tiles, {P} pixels streamed per reload)"
+        )
+
+    dut._log.info(
+        f"PASS: streamed tiled conv -- all {P}x{N} outputs bit-exact vs "
+        f"fp64 reference; {P} pixels streamed/reload across {KT} K-tiles "
+        f"(per-pixel fp32 cross-tile accumulation)"
+    )
+
+
+# =======================================================================
 # Test 7 (opt-in): RAFT-dimension conv -- real Cin/Cout/kernel depth
 # =======================================================================
 # Same channel/kernel dims as the M1 dominant kernel
@@ -951,37 +1173,43 @@ async def test_conv_raft_dims_e2e(dut):
 # =======================================================================
 # Test 8 (opt-in): per-phase cycle MEASUREMENT for the M4 benchmark
 # =======================================================================
-# Not a correctness test -- it times the three host-driven phases that a
-# full im2col->GEMM convolution decomposes into, so bench/benchmark.py can
-# extrapolate a measured (not hand-counted) per-tile cost to RAFT scale.
+# Not a correctness test -- it times the host-driven phases an im2col->GEMM
+# convolution decomposes into, for BOTH the single-pixel (M3 baseline) and
+# the streaming (M4, B=PIX_BLOCK) schedules, so bench/benchmark.py can
+# extrapolate measured (not hand-counted) per-tile costs to RAFT scale and
+# compute the streaming speedup.
 #
-#   LOAD          host_load_weights        -- stream one MxN weight slab
-#                                             (WEIGHT_BEATS beats) + the
-#                                             AXIL START/STATUS handshake.
-#   COMPUTE(hold) host_compute_accumulate  -- push ACT_BEATS, MAC + on-chip
-#                 (hold=True)                 fp32 accumulate, NO drain.
-#   tile(full)    host_compute_tile        -- COMPUTE + drain N result beats;
-#                                             drain_cycles = full - hold.
+#   load          host_load_weights         -- stream one MxN weight slab
+#                                              (WEIGHT_BEATS beats) + the
+#                                              AXIL START/STATUS handshake.
+#   stream_hold[B]  host_compute_stream      -- write PIX_COUNT=B, push B act
+#                   (hold=True)                 columns, MAC + on-chip fp32
+#                                              accumulate, NO drain (the
+#                                              per-K-tile compute cost of a
+#                                              B-pixel block).
+#   stream_full[B]  host_compute_stream      -- as above + drain B*N results;
+#                   (hold=False)                drain_cyc[B] = full - hold.
 #
-# Cycles are read from the simulator clock via get_sim_time("ns") and
-# divided by CLK_PERIOD_NS, so they are real RTL cycle counts, not a
-# formula. Iteration 0 is dropped (pipeline fill / first-START warmup)
-# and the steady-state mean of the rest is written to
-# ../bench/bench_measured.csv. Opt-in (BENCH=1) so the default sweep
-# stays fast.
+# B=1 rows are the M3 single-pixel baseline (the reload pathology); B=
+# PIX_BLOCK rows are the streamed block. Cycles are read from the simulator
+# clock via get_sim_time("ns") / CLK_PERIOD_NS (real RTL cycles, not a
+# formula); iteration 0 is dropped (warmup) and the steady-state mean is
+# written to ../bench/bench_measured.csv. Opt-in (BENCH=1) so the default
+# sweep stays fast.
 RUN_BENCH = os.environ.get("BENCH", "0") == "1"
 BENCH_REPS = int(os.environ.get("BENCH_REPS", "6"))
 
 
 @cocotb.test(skip=not RUN_BENCH)
 async def test_benchmark(dut):
-    """Measure steady-state LOAD / COMPUTE(hold) / DRAIN cycle counts and
-    dump them to ../bench/bench_measured.csv for the M4 benchmark script.
+    """Measure steady-state load / stream_hold / stream_full cycle counts at
+    B=1 (M3 baseline) and B=PIX_BLOCK (M4 streaming), and dump them to
+    ../bench/bench_measured.csv for the M4 benchmark script.
 
     Drives only the bus pins (same firewall as the correctness tests), so
-    the measured cycles include the real AXI-Lite START/STATUS handshakes a
-    host pays per tile -- i.e. a realistic sustained cost, not a datapath-
-    only lower bound.
+    the measured cycles include the real AXI-Lite START/STATUS/PIX_COUNT
+    handshakes a host pays per tile -- a realistic sustained cost, not a
+    datapath-only lower bound.
     """
     import csv as _csv
     from pathlib import Path
@@ -998,70 +1226,70 @@ async def test_benchmark(dut):
         )
         return
 
-    # Deterministic, exactly-representable bf16 operands (no rounding noise;
-    # values are irrelevant to timing -- only the handshake/beat counts and
-    # pipeline depth drive the cycle counts).
-    B = [[float(((i + j) % 4) - 2) for j in range(N)] for i in range(M)]
-    x = [float((i % 4) - 2) for i in range(M)]
+    # Deterministic, exactly-representable bf16 operands (values are
+    # irrelevant to timing -- only handshake/beat counts + pipeline depth
+    # drive the cycle counts).
+    Bmat = [[float(((i + j) % 4) - 2) for j in range(N)] for i in range(M)]
+    cols_all = [[float(((i + p) % 4) - 2) for i in range(M)]
+                for p in range(PIX_BLOCK)]
 
     def cyc(t0: float, t1: float) -> float:
         return (t1 - t0) / CLK_PERIOD_NS
 
-    load_samp: list[float] = []
-    hold_samp: list[float] = []
-    full_samp: list[float] = []
-
-    for _ in range(BENCH_REPS):
-        t0 = get_sim_time("ns")
-        await host_load_weights(dut, B)
-        t1 = get_sim_time("ns")
-        load_samp.append(cyc(t0, t1))
-
-        # COMPUTE with hold=True: MAC + on-chip fp32 accumulate, no drain.
-        # accum=False so result_buf is overwritten each rep (no contamination).
-        t0 = get_sim_time("ns")
-        await host_compute_accumulate(dut, x, accum=False, hold=True)
-        t1 = get_sim_time("ns")
-        hold_samp.append(cyc(t0, t1))
-
-        # Full standalone tile (COMPUTE + drain). Weights still resident
-        # (weight-stationary), accum=0 -> overwrites the held partials.
-        t0 = get_sim_time("ns")
-        await host_compute_tile(dut, x)
-        t1 = get_sim_time("ns")
-        full_samp.append(cyc(t0, t1))
-
-    # Drop iteration 0 (warmup) and average the steady state.
     def steady(samples: list[float]) -> float:
         body = samples[1:] if len(samples) > 1 else samples
         return sum(body) / len(body)
 
-    load_cyc = steady(load_samp)
-    hold_cyc = steady(hold_samp)
-    full_cyc = steady(full_samp)
-    drain_cyc = full_cyc - hold_cyc
+    async def measure(block: int):
+        """Steady-state (load, stream_hold[block], stream_full[block])."""
+        cols = cols_all[:block]
+        load_s: list[float] = []
+        hold_s: list[float] = []
+        full_s: list[float] = []
+        for _ in range(BENCH_REPS):
+            t0 = get_sim_time("ns")
+            await host_load_weights(dut, Bmat)
+            load_s.append(cyc(t0, get_sim_time("ns")))
+
+            t0 = get_sim_time("ns")
+            await host_compute_stream(dut, cols, accum=False, hold=True)
+            hold_s.append(cyc(t0, get_sim_time("ns")))
+
+            t0 = get_sim_time("ns")
+            await host_compute_stream(dut, cols, accum=False, hold=False)
+            full_s.append(cyc(t0, get_sim_time("ns")))
+        return steady(load_s), steady(hold_s), steady(full_s)
+
+    load1, hold1, full1 = await measure(1)
+    loadB, holdB, fullB = await measure(PIX_BLOCK)
+    load_cyc = (load1 + loadB) / 2.0        # block-independent; average both
     reps = max(BENCH_REPS - 1, 1)
 
     BYTES_PER_BEAT = AXIS_DATA_W // 8        # 256-bit AXIS -> 32 B/beat
+    # phase, block, cycles, beats, bytes
     rows = [
-        # phase,          cycles,    beats,                 bytes
-        ("load",          load_cyc,  WEIGHT_BEATS,          WEIGHT_BEATS * BYTES_PER_BEAT),
-        ("compute_hold",  hold_cyc,  ACT_BEATS,             ACT_BEATS * BYTES_PER_BEAT),
-        ("drain",         drain_cyc, N,                     N * BYTES_PER_BEAT),
-        ("tile_full",     full_cyc,  ACT_BEATS + N,         (ACT_BEATS + N) * BYTES_PER_BEAT),
+        ("load",        0,         load_cyc, WEIGHT_BEATS,            WEIGHT_BEATS * BYTES_PER_BEAT),
+        ("stream_hold", 1,         hold1,    1 * ACT_BEATS,           1 * ACT_BEATS * BYTES_PER_BEAT),
+        ("stream_full", 1,         full1,    1 * ACT_BEATS + 1 * N,   (1 * ACT_BEATS + 1 * N) * BYTES_PER_BEAT),
+        ("stream_hold", PIX_BLOCK, holdB,    PIX_BLOCK * ACT_BEATS,   PIX_BLOCK * ACT_BEATS * BYTES_PER_BEAT),
+        ("stream_full", PIX_BLOCK, fullB,    PIX_BLOCK * ACT_BEATS + PIX_BLOCK * N,
+                                             (PIX_BLOCK * ACT_BEATS + PIX_BLOCK * N) * BYTES_PER_BEAT),
     ]
 
     out_path = Path(__file__).resolve().parent.parent / "bench" / "bench_measured.csv"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with out_path.open("w", newline="") as fh:
         w = _csv.writer(fh)
-        w.writerow(["phase", "cycles", "beats", "bytes", "iters", "clk_ns"])
-        for phase, cycles, beats, nbytes in rows:
-            w.writerow([phase, f"{cycles:.3f}", beats, nbytes, reps, CLK_PERIOD_NS])
+        w.writerow(["phase", "block", "cycles", "beats", "bytes", "iters", "clk_ns"])
+        for phase, block, cycles, beats, nbytes in rows:
+            w.writerow([phase, block, f"{cycles:.3f}", beats, nbytes, reps, CLK_PERIOD_NS])
 
+    # Marginal per-pixel stream cost -- should approach 1 cycle/pixel.
+    per_pix = (holdB - hold1) / max(PIX_BLOCK - 1, 1)
     dut._log.info(
-        f"PASS: benchmark measurement -- load={load_cyc:.1f} "
-        f"compute_hold={hold_cyc:.1f} drain={drain_cyc:.1f} "
-        f"tile_full={full_cyc:.1f} cycles (steady-state mean of {reps} reps) "
-        f"-> {out_path}"
+        f"PASS: benchmark measurement -- load={load_cyc:.1f} | "
+        f"B=1: hold={hold1:.1f} full={full1:.1f} | "
+        f"B={PIX_BLOCK}: hold={holdB:.1f} full={fullB:.1f} "
+        f"(~{per_pix:.2f} cyc/extra pixel) "
+        f"[steady mean of {reps} reps] -> {out_path}"
     )

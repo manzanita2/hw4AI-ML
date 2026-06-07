@@ -1,12 +1,22 @@
 // top
 //
-// M3 integrated accelerator. Bus-pin-only top module that wires the
+// M3/M4 integrated accelerator. Bus-pin-only top module that wires the
 // pipelined compute_core (compute_core_pipelined, MAC_LATENCY = 5 for
 // the M4 16x16 @ 100 MHz scope) to the M3 interface_module via an
 // on-chip weight_store,
 // two flop-array FIFOs, a load_seq replay block, a combinational
 // LOAD-vs-COMPUTE demux, and an egress skid_buffer that breaks the
 // flop-array fanout cone driving m_axis_*.
+//
+// M4 adds streaming: compute_core_pipelined takes a PIX_BLOCK parameter
+// and a runtime cfg_pix_count (the PIX_COUNT AXI-Lite register) so one
+// COMPUTE streams up to PIX_BLOCK pixel columns through the resident
+// weights, amortizing the M*N-cycle weight reload + pipeline fill. The
+// surrounding glue (FIFOs, demux, weight_store, load_seq, skid) is
+// unchanged: activations still arrive one beat/cycle on the AXIS slave
+// and are flow-controlled by act_ready; results still drain one bf16/beat
+// (now B*N beats) through the egress FIFO + skid, flow-controlled by
+// m_axis_tready, so no FIFO needs deepening.
 //
 // This is the module that:
 //   - the cocotb harness `tb_top.sv` exercises end-to-end,
@@ -89,6 +99,10 @@
 // Bring-up / sim+synth defaults at M = N = 16 (256 PEs) -- the M3
 // scope adjustment from architecture.md's 48 x 48 aspirational array
 // (see synthesis_notes.md). LANES = 16 matches the 256-bit AXIS payload.
+// PIX_BLOCK = 32 is the M4 streaming default (see compute_core_pipelined.sv
+// and ../bench/benchmark.py); Icarus cannot override top params from the
+// CLI, so the elaborated RTL uses these defaults and the cocotb Makefile
+// single-sources M / N / PIX_BLOCK to match.
 
 module top #(
     parameter int AXIS_DATA_W = 256,
@@ -101,6 +115,13 @@ module top #(
 
     parameter int M           = 16,
     parameter int N           = 16,
+
+    // M4 streaming block depth (pixel columns per COMPUTE). Sizes
+    // compute_core's act_block / result_buf. PIX_BLOCK = 1 recovers the
+    // M3 single-column core; larger values amortize the per-COMPUTE weight
+    // reload over more pixels (the dominant flop-growth knob -- see
+    // compute_core_pipelined.sv and ../bench/benchmark.py).
+    parameter int PIX_BLOCK   = 32,
 
     // FIFO depths
     parameter int INGRESS_DEPTH = 16,
@@ -150,6 +171,7 @@ module top #(
     logic cfg_mode;
     logic cfg_accum;
     logic cfg_hold;
+    logic [15:0] cfg_pix_count;
     logic core_cfg_start;
     logic stream_clr;
     assign core_cfg_start = cfg_start && (cfg_mode == 1'b0);
@@ -240,6 +262,7 @@ module top #(
         .cfg_mode       (cfg_mode),
         .cfg_accum      (cfg_accum),
         .cfg_hold       (cfg_hold),
+        .cfg_pix_count  (cfg_pix_count),
         .status_busy    (status_busy),
         .status_done    (status_done),
         .weights_loaded (weights_loaded),
@@ -363,24 +386,26 @@ module top #(
         .M            (M),
         .N            (N),
         .LANES        (LANES),
-        .MAC_LATENCY  (5)
+        .MAC_LATENCY  (5),
+        .PIX_BLOCK    (PIX_BLOCK)
     ) u_core (
-        .clk          (clk),
-        .rst          (rst),
-        .act_data     (cc_act_data),
-        .act_valid    (cc_act_valid),
-        .act_last     (cc_act_last),
-        .act_ready    (cc_act_ready),
-        .res_data     (cc_res_data),
-        .res_valid    (cc_res_valid),
-        .res_last     (cc_res_last),
-        .res_ready    (cc_res_ready),
-        .cfg_start    (core_cfg_start),
-        .cfg_accum    (cfg_accum),
-        .cfg_hold     (cfg_hold),
-        .status_busy  (status_busy),
-        .status_done  (status_done),
-        .wt_data_ext  (ls_wt_data)
+        .clk           (clk),
+        .rst           (rst),
+        .act_data      (cc_act_data),
+        .act_valid     (cc_act_valid),
+        .act_last      (cc_act_last),
+        .act_ready     (cc_act_ready),
+        .res_data      (cc_res_data),
+        .res_valid     (cc_res_valid),
+        .res_last      (cc_res_last),
+        .res_ready     (cc_res_ready),
+        .cfg_start     (core_cfg_start),
+        .cfg_accum     (cfg_accum),
+        .cfg_hold      (cfg_hold),
+        .cfg_pix_count (cfg_pix_count),
+        .status_busy   (status_busy),
+        .status_done   (status_done),
+        .wt_data_ext   (ls_wt_data)
     );
 
     // ==================================================================

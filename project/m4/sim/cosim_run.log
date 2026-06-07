@@ -8946,9 +8946,10 @@ mkdir -p sim_build
 /home/hx3d/opt/hw4AI-ML/project/m4/rtl/add_fp32_p2.sv:195: sorry: constant selects in always_* processes are not fully supported (the process will be sensitive to all bits in 'exp_norm_c[8:0]').
 /home/hx3d/opt/hw4AI-ML/project/m4/rtl/add_fp32_p2.sv:200: sorry: constant selects in always_* processes are not fully supported (the process will be sensitive to all bits in 'exp_norm_c[8:0]').
 /home/hx3d/opt/hw4AI-ML/project/m4/rtl/add_fp32_p2.sv:200: sorry: constant selects in always_* processes are not fully supported (the process will be sensitive to all bits in 'mant_norm_c[27:0]').
-/home/hx3d/opt/hw4AI-ML/project/m4/rtl/interface.sv:194: vvp.tgt sorry: Case unique/unique0 qualities are ignored.
-/home/hx3d/opt/hw4AI-ML/project/m4/rtl/interface.sv:245: vvp.tgt sorry: Case unique/unique0 qualities are ignored.
-/home/hx3d/opt/hw4AI-ML/project/m4/rtl/interface.sv:248: vvp.tgt sorry: Case unique/unique0 qualities are ignored.
+/home/hx3d/opt/hw4AI-ML/project/m4/rtl/compute_core_pipelined.sv:226: sorry: constant selects in always_* processes are not fully supported (the process will be sensitive to all bits in 'cfg_pix_count[15:0]').
+/home/hx3d/opt/hw4AI-ML/project/m4/rtl/interface.sv:214: vvp.tgt sorry: Case unique/unique0 qualities are ignored.
+/home/hx3d/opt/hw4AI-ML/project/m4/rtl/interface.sv:272: vvp.tgt sorry: Case unique/unique0 qualities are ignored.
+/home/hx3d/opt/hw4AI-ML/project/m4/rtl/interface.sv:275: vvp.tgt sorry: Case unique/unique0 qualities are ignored.
 /home/hx3d/opt/hw4AI-ML/project/m4/rtl/load_seq.sv:78: vvp.tgt sorry: Case unique/unique0 qualities are ignored.
 /home/hx3d/opt/hw4AI-ML/project/m4/rtl/load_seq.sv:91: vvp.tgt sorry: Case unique/unique0 qualities are ignored.
 rm -f results.xml
@@ -8957,11 +8958,11 @@ COCOTB_TEST_MODULES=tb_top COCOTB_TESTCASE= COCOTB_TEST_FILTER= COCOTB_TOPLEVEL=
      -.--ns INFO     gpi                                ..mbed/gpi_embed.cpp:93   in _embed_init_python              Using Python 3.11.9 interpreter at /home/hx3d/opt/hw4AI-ML/.venv-cocotb/bin/python
      -.--ns INFO     gpi                                ../gpi/GpiCommon.cpp:79   in gpi_print_registered_impl       VPI registered
      0.00ns INFO     cocotb                             Running on Icarus Verilog version 14.0 (devel)
-     0.00ns INFO     cocotb                             Seeding Python random module with 1780825308
+     0.00ns INFO     cocotb                             Seeding Python random module with 1780829462
      0.00ns INFO     cocotb                             Initialized cocotb v2.0.1 from /home/hx3d/opt/hw4AI-ML/.venv-cocotb/lib64/python3.11/site-packages/cocotb
      0.00ns INFO     cocotb.regression                  pytest not found, install it to enable better AssertionError messages
      0.00ns INFO     cocotb                             Running tests
-     0.00ns INFO     cocotb.regression                  running tb_top.test_top_smoke (1/8)
+     0.00ns INFO     cocotb.regression                  running tb_top.test_top_smoke (1/10)
                                                             Reset; verify bus outputs all sit at sensible idle values.
     31.00ns INFO     cocotb.top                           OK   s_axil_awready     = 1  (expect 1)
     31.00ns INFO     cocotb.top                           OK   s_axil_wready      = 1  (expect 1)
@@ -8972,48 +8973,60 @@ COCOTB_TEST_MODULES=tb_top COCOTB_TESTCASE= COCOTB_TEST_FILTER= COCOTB_TOPLEVEL=
     31.00ns INFO     cocotb.top                           OK   s_axis_tready      = 1  (expect 1)
     31.00ns INFO     cocotb.top                         PASS: top smoke (reset + idle outputs)
     31.00ns INFO     cocotb.regression                  tb_top.test_top_smoke passed
-    31.00ns INFO     cocotb.regression                  running tb_top.test_axil_scratch_loopback (2/8)
+    31.00ns INFO     cocotb.regression                  running tb_top.test_axil_scratch_loopback (2/10)
                                                             Write+read SCRATCH @ 0x10 to confirm the AXI-Lite path survived
    111.00ns INFO     cocotb.top                           OK   SCRATCH loopback: wrote/read 0xCAFEF00D
    111.00ns INFO     cocotb.top                         PASS: SCRATCH loopback
    111.00ns INFO     cocotb.regression                  tb_top.test_axil_scratch_loopback passed
-   111.00ns INFO     cocotb.regression                  running tb_top.test_gemm_tile_e2e (3/8)
+   111.00ns INFO     cocotb.regression                  running tb_top.test_gemm_tile_e2e (3/10)
                                                             HEADLINE: one im2col -> GEMM tile of the M1 dominant kernel.
    152.00ns INFO     cocotb.top                         GEMM tile: M=N=16, LANES=16, WEIGHT_BEATS=16, ACT_BEATS=1, CLK=10ns (100 MHz)
-  4761.00ns INFO     cocotb.top                         PASS: 16x16 GEMM tile -- all 16 outputs bit-exact vs bf16 reference
-  4761.00ns INFO     cocotb.regression                  tb_top.test_gemm_tile_e2e passed
-  4761.00ns INFO     cocotb.regression                  running tb_top.test_weight_reuse_two_activation_tiles (4/8)
+  4781.00ns INFO     cocotb.top                         PASS: 16x16 GEMM tile -- all 16 outputs bit-exact vs bf16 reference
+  4781.00ns INFO     cocotb.regression                  tb_top.test_gemm_tile_e2e passed
+  4781.00ns INFO     cocotb.regression                  running tb_top.test_weight_reuse_two_activation_tiles (4/10)
                                                             Load weights once; run two compute tiles with different
- 13791.00ns INFO     cocotb.top                           OK   tile 1 + tile 2 both bit-exact, no second weight load
- 13791.00ns INFO     cocotb.top                         PASS: weight cache survives across activation tiles
- 13791.00ns INFO     cocotb.regression                  tb_top.test_weight_reuse_two_activation_tiles passed
- 13791.00ns INFO     cocotb.regression                  running tb_top.test_backpressure (5/8)
+ 13851.00ns INFO     cocotb.top                           OK   tile 1 + tile 2 both bit-exact, no second weight load
+ 13851.00ns INFO     cocotb.top                         PASS: weight cache survives across activation tiles
+ 13851.00ns INFO     cocotb.regression                  tb_top.test_weight_reuse_two_activation_tiles passed
+ 13851.00ns INFO     cocotb.regression                  running tb_top.test_backpressure (5/10)
                                                             Hold m_axis_tready=0 for 6 cycles after capturing the first
- 18481.00ns INFO     cocotb.top                           OK   all N results survived 6-cycle egress backpressure
- 18481.00ns INFO     cocotb.top                         PASS: egress FIFO decouples drain from m_axis_tready
- 18481.00ns INFO     cocotb.regression                  tb_top.test_backpressure passed
- 18481.00ns INFO     cocotb.regression                  running tb_top.test_conv_e2e (6/8)
+ 18541.00ns INFO     cocotb.top                           OK   all N results survived 6-cycle egress backpressure
+ 18541.00ns INFO     cocotb.top                         PASS: egress FIFO decouples drain from m_axis_tready
+ 18541.00ns INFO     cocotb.regression                  tb_top.test_backpressure passed
+ 18541.00ns INFO     cocotb.regression                  running tb_top.test_conv_e2e (6/10)
                                                             End-to-end tiled convolution with HARDWARE cross-tile accumulation.
- 18522.01ns INFO     cocotb.top                         conv: Cin=16 Cout=16 3x3 4x4 -> 2x2; K=144 -> 9 K-tiles, 4 output pixels, tile=16x16, CLK=10ns (100 MHz)
-179361.01ns INFO     cocotb.top                         PASS: tiled conv -- all 4x16 outputs bit-exact vs fp64 reference; 9 K-tiles accumulated in hardware (fp32, bf16-rounded once at drain)
-179361.01ns INFO     cocotb.regression                  tb_top.test_conv_e2e passed
-179361.01ns INFO     cocotb.regression                  skipping tb_top.test_conv_raft_dims_e2e (7/8)
+ 18582.01ns INFO     cocotb.top                         conv: Cin=16 Cout=16 3x3 4x4 -> 2x2; K=144 -> 9 K-tiles, 4 output pixels, tile=16x16, CLK=10ns (100 MHz)
+180141.01ns INFO     cocotb.top                         PASS: tiled conv -- all 4x16 outputs bit-exact vs fp64 reference; 9 K-tiles accumulated in hardware (fp32, bf16-rounded once at drain)
+180141.01ns INFO     cocotb.regression                  tb_top.test_conv_e2e passed
+180141.01ns INFO     cocotb.regression                  running tb_top.test_stream_block (7/10)
+                                                            M4 STREAMING headline: stream a block of B > 1 pixel columns through
+180182.01ns INFO     cocotb.top                         stream block: B=8 pixels x N=16 cols through one 16x16 slab (PIX_BLOCK=32)
+186071.01ns INFO     cocotb.top                         PASS: streamed 8-pixel block -- all 8x16 outputs bit-exact vs bf16 reference (one weight load + one fill)
+186071.01ns INFO     cocotb.regression                  tb_top.test_stream_block passed
+186071.01ns INFO     cocotb.regression                  running tb_top.test_conv_stream_e2e (8/10)
+                                                            Streaming tiled convolution: the SAME small im2col -> GEMM conv as
+186112.01ns INFO     cocotb.top                         streamed conv: Cin=16 Cout=16 3x3 4x4 -> 2x2; K=144 -> 9 K-tiles, P=4 pixels streamed/block, tile=16x16
+227521.01ns INFO     cocotb.top                         PASS: streamed tiled conv -- all 4x16 outputs bit-exact vs fp64 reference; 4 pixels streamed/reload across 9 K-tiles (per-pixel fp32 cross-tile accumulation)
+227521.01ns INFO     cocotb.regression                  tb_top.test_conv_stream_e2e passed
+227521.01ns INFO     cocotb.regression                  skipping tb_top.test_conv_raft_dims_e2e (9/10)
                                                             RAFT-dimension conv (Cin=Cout=64, 3x3) at a 1x1 output, with
-179361.01ns INFO     cocotb.regression                  skipping tb_top.test_benchmark (8/8)
-                                                            Measure steady-state LOAD / COMPUTE(hold) / DRAIN cycle counts and
-179361.01ns INFO     cocotb.regression                  *******************************************************************************************************
+227521.01ns INFO     cocotb.regression                  skipping tb_top.test_benchmark (10/10)
+                                                            Measure steady-state load / stream_hold / stream_full cycle counts at
+227521.01ns INFO     cocotb.regression                  *******************************************************************************************************
                                                         ** TEST                                           STATUS  SIM TIME (ns)  REAL TIME (s)  RATIO (ns/s) **
                                                         *******************************************************************************************************
-                                                        ** tb_top.test_top_smoke                           PASS          31.00           0.02       1487.34  **
-                                                        ** tb_top.test_axil_scratch_loopback               PASS          80.00           0.02       4216.23  **
-                                                        ** tb_top.test_gemm_tile_e2e                       PASS        4650.00           1.09       4268.06  **
-                                                        ** tb_top.test_weight_reuse_two_activation_tiles   PASS        9030.00           2.06       4392.55  **
-                                                        ** tb_top.test_backpressure                        PASS        4690.00           1.06       4417.35  **
-                                                        ** tb_top.test_conv_e2e                            PASS      160880.00          37.12       4333.79  **
+                                                        ** tb_top.test_top_smoke                           PASS          31.00           0.03       1109.24  **
+                                                        ** tb_top.test_axil_scratch_loopback               PASS          80.00           0.03       2417.64  **
+                                                        ** tb_top.test_gemm_tile_e2e                       PASS        4670.00           1.36       3440.07  **
+                                                        ** tb_top.test_weight_reuse_two_activation_tiles   PASS        9070.00           2.70       3362.81  **
+                                                        ** tb_top.test_backpressure                        PASS        4690.00           1.36       3453.96  **
+                                                        ** tb_top.test_conv_e2e                            PASS      161600.00          44.61       3622.91  **
+                                                        ** tb_top.test_stream_block                        PASS        5930.00           1.81       3268.53  **
+                                                        ** tb_top.test_conv_stream_e2e                     PASS       41450.00           9.55       4340.54  **
                                                         ** tb_top.test_conv_raft_dims_e2e                  SKIP           0.00           0.00          -.--  **
                                                         ** tb_top.test_benchmark                           SKIP           0.00           0.00          -.--  **
                                                         *******************************************************************************************************
-                                                        ** TESTS=8 PASS=6 FAIL=0 SKIP=2                              179361.01          41.39       4333.68  **
+                                                        ** TESTS=10 PASS=8 FAIL=0 SKIP=2                             227521.01          61.47       3701.22  **
                                                         *******************************************************************************************************
 WARNING: /home/hx3d/opt/hw4AI-ML/project/m4/rtl/load_seq.sv:78: value is unhandled for priority or unique case statement
          Time: 0  Scope: top.u_lseq

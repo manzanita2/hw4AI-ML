@@ -33,13 +33,21 @@ TEST ?= top
 # These vars MUST equal those defaults (currently 16/16); they are
 # exported so tb_top.py reads the same size/clock the RTL was built with
 # (a mismatch makes test_gemm_tile_e2e FAIL loudly, never silently pass).
-# The same M/N feed `chparam` in the synth-yosys target below.
+# The same M/N/PIX_BLOCK feed `chparam` in the synth-yosys target below.
+#
+# PIX_BLOCK is the M4 streaming block depth and MUST equal top.sv's
+# PIX_BLOCK default (32): tb_top.py uses it to size streamed blocks, and
+# synth-yosys passes it via chparam so the gate count matches the elaborated
+# design. The streaming tests run PIX_COUNT<=PIX_BLOCK; PIX_COUNT=1 paths
+# are the M3 bit-exact regression.
 # ----------------------------------------------------------------------
 M ?= 16
 N ?= 16
+PIX_BLOCK ?= 32
 CLK_PERIOD_NS ?= 10              # 10 ns -> 100 MHz
 export M
 export N
+export PIX_BLOCK
 export CLK_PERIOD_NS
 
 M3_RTL_DIR := $(abspath $(CURDIR)/../rtl)
@@ -152,6 +160,6 @@ YOSYS_LOG   = $(SYNTH_DIR)/yosys_$(M)x$(N)_run.log
 synth-yosys:
 	@mkdir -p $(SYNTH_DIR)
 	yosys -p "read_verilog -sv $(YOSYS_SRCS); \
-	          chparam -set M $(M) -set N $(N) top; \
+	          chparam -set M $(M) -set N $(N) -set PIX_BLOCK $(PIX_BLOCK) top; \
 	          synth -top top; stat" 2>&1 | tee $(YOSYS_LOG)
-	@echo "==> $(YOSYS_LOG) updated (M=$(M) N=$(N))"
+	@echo "==> $(YOSYS_LOG) updated (M=$(M) N=$(N) PIX_BLOCK=$(PIX_BLOCK))"

@@ -1,5 +1,6 @@
-phase,cycles,beats,bytes,iters,clk_ns
-load,23.000,16,512,5,10
-compute_hold,422.000,1,32,5,10
-drain,16.000,16,512,5,10
-tile_full,438.000,17,544,5,10
+phase,block,cycles,beats,bytes,iters,clk_ns
+load,0,23.000,16,512,5,10
+stream_hold,1,424.000,1,32,5,10
+stream_full,1,440.000,17,544,5,10
+stream_hold,32,486.000,32,1024,5,10
+stream_full,32,998.000,544,17408,5,10
