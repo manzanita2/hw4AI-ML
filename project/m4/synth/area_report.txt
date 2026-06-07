@@ -1,0 +1,50 @@
+M4 Area Report -- 16x16 @ 100 MHz, sky130, LibreLane/OpenLane 2
+===============================================================
+
+Source run : project/m4/synth/runs/RUN_2026-06-04_17-46-11
+Design     : top  (M = N = 16, 256 PEs, weight-stationary systolic array)
+Standard cells: sky130_fd_sc_hd
+
+Die / core (from 13-openroad-floorplan, fixed through the run)
+---------------------------------------------------------------------
+  Die bbox        : 0.0 0.0 4041.35 4052.07 um   (~4.04 mm x 4.05 mm)
+  Die area        : 16,375,800 um^2  (~16.38 mm^2)
+  Core area       : 16,234,400 um^2
+  Target FP_CORE_UTIL : 45 %
+
+Placed std-cell area / count (from 34-openroad-detailedplacement)
+---------------------------------------------------------------------
+  Total std-cell area : 8,429,740 um^2
+  Std-cell utilization: 51.9 %
+  Instance count (incl. fill/tap/repair): 963,175
+
+Logic cell breakdown by class (from 13-openroad-floorplan, pre-fill)
+---------------------------------------------------------------------
+  Class                              Count        Area (um^2)   % of cell area
+  multi_input_combinational_cell   484,530       4,587,000      ~54 %  <-- dominant
+  sequential_cell (flops)           96,607       2,494,630      ~30 %
+  inverter                          60,714         227,896      ~3 %
+  (buffers/taps/fill added later by PDN/CTS/resizer)
+
+  Dominant area contributor: combinational logic (multi-input cells),
+  4.59M um^2, ~54 % of placed std-cell area. This is the bf16
+  multipliers (mul_bf16_p2, 8x8 mantissa multiply per PE) and the
+  fp32 adders (add_fp32_p2) replicated across all 256 PEs plus the
+  16 result-stage column adders. Sequential cells (the ~96.6k
+  async-reset flops: PE act/psum pipeline chains, weight_store RAM,
+  the two 257-bit AXIS FIFOs, result_buf) are the second contributor
+  at ~30 %.
+
+Repair / tap / fill cells added during PnR (34-openroad-detailedplacement)
+---------------------------------------------------------------------
+  timing_repair_buffer : 89,975 cells, 829,374 um^2
+  tap_cell             : 231,348 cells, 289,463 um^2
+  fill_cell            :  2,962 cells,  11,118 um^2
+
+NOTES
+---------------------------------------------------------------------
+- Per-module gate counts at the 16x16 (and historical 48x48) scope
+  come from `make synth-yosys` (yosys `stat`); see
+  ../../m3/synth/yosys_16x16_run.log for the module rollup.
+- Prior committed M3 area numbers (4x4 @ 300 MHz / 48x48 elab) are
+  superseded by this run for M4.

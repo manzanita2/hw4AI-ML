@@ -1,0 +1,50 @@
+M4 Power Report -- 16x16 @ 100 MHz, sky130, LibreLane/OpenLane 2
+===============================================================
+
+Source run : project/m4/synth/runs/RUN_2026-06-04_17-46-11
+Source step: 42-openroad-stamidpnr-3 (post-global-route STA)
+Corner     : nom_tt_025C_1v80 (typical, 25 C, 1.80 V)
+Design     : top  (M = N = 16, 256 PEs)
+Tool       : OpenROAD report_power
+
+report_power (nom_tt_025C_1v80)
+---------------------------------------------------------------------
+  Group            Internal     Switching    Leakage      Total       %
+  Sequential       0.40233 W    0.00459 W    1.15e-6 W    0.40692 W   48.8%
+  Combinational    0.05658 W    0.06528 W    2.76e-6 W    0.12186 W   14.6%
+  Clock            0.17017 W    0.13528 W    1.47e-7 W    0.30545 W   36.6%
+  Macro            0            0            0            0            0.0%
+  Pad              0            0            0            0            0.0%
+  ------------------------------------------------------------------
+  Total            0.62921 W    0.20515 W    4.05e-6 W    0.83436 W   100%
+                   (75.4%)      (24.6%)      (~0%)
+
+  TOTAL POWER : 834 mW  (0.834 W)
+
+Dominant contributor
+---------------------------------------------------------------------
+  Sequential cells dominate at 0.407 W (48.8 %), driven almost
+  entirely by internal/clock power of the ~96.6k async-reset flops
+  (PE pipeline chains, weight_store, the two 257-bit AXIS FIFOs).
+  The clock network is the second contributor at 0.305 W (36.6 %) --
+  expected for a flop-heavy systolic array. Combinational switching
+  (the bf16 mul / fp32 add datapaths) is only 0.122 W (14.6 %).
+
+IMPORTANT -- estimate basis
+---------------------------------------------------------------------
+  This is OpenROAD's STATIC activity estimate (default internal
+  switching-activity propagation), NOT a back-annotated VCD power
+  run. No SAIF/VCD from the cocotb co-sim was annotated onto the
+  netlist. The absolute watts should be read as an order-of-magnitude
+  signoff estimate; the relative split (sequential >> clock >>
+  combinational) is the trustworthy takeaway. A VCD-back-annotated
+  run (feeding tb_top's gemm-tile activity into report_power) is the
+  natural M4 follow-up for a sharper number, and the conv tile's real
+  duty cycle (LOAD state toggles the weight mux only once per tile)
+  would lower the combinational/clock figures.
+
+NOTES
+---------------------------------------------------------------------
+- Raw report: RUN_2026-06-04_17-46-11/42-openroad-stamidpnr-3/power.rpt
+- Prior committed M3 power numbers (4x4 @ 300 MHz, 50% toggle) are
+  superseded by this run for M4.

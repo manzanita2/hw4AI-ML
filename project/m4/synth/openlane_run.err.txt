@@ -1,0 +1,2 @@
+[1;31m==>[0m Error: No such environment: 'sythesis'
+slurmstepd: error: *** JOB 92798 ON orcaga10 CANCELLED AT 2026-06-05T13:43:19 DUE TO TIME LIMIT ***
