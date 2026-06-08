@@ -72,19 +72,6 @@
 100\,MHz, sky130 (OpenLane 2).\par}
 \end{titlepage}
 
-% ----------------------- how-to + open questions --------------------
-\noindent\colorbox{yellow!20}{\parbox{\dimexpr\linewidth-2\fboxsep\relax}{%
-\textbf{How to use this template (delete before final).} Replace every
-\fillin{red blank} and answer every \textbf{\textcolor{red!60!black}{QUESTION
-FOR AUTHOR}} box, then remove this box and the list below. Keep the nine
-section headings exactly as-is (the grader counts them). Aim for 2000--2500
-words total. Build with \texttt{make}.}}
-
-\question{Optional polish only: all required sections are filled (name,
-precision, diagrams, verification, synthesis, benchmark, what-did-not-work).
-Add anything in Sec.~1 about the end application you want to emphasize, then
-delete the boxes above before submitting.}
-
 \begin{abstract}
 \noindent
 This report documents a custom hardware accelerator for the dominant
@@ -161,9 +148,9 @@ delivered performance.
 
 \begin{figure}[t]
 \centering
-\IfFileExists{../bench/roofline_final.png}{%
-  \includegraphics[width=0.85\textwidth]{../bench/roofline_final.png}}{%
-  \fbox{\texttt{../bench/roofline\_final.png missing -- run tools/roofplot}}}
+\IfFileExists{figures/roofline_final.png}{%
+  \includegraphics[width=0.85\textwidth]{figures/roofline_final.png}}{%
+  \fbox{\texttt{figures/roofline\_final.png missing -- run tools/roofplot}}}
 \caption{Roofline for the 16$\times$16 array (compute roof 51.2 GFLOP/s, pin
 bandwidth 3.2 GB/s, ridge AI = 16). The measured operating point sits at
 AI 0.92, 0.115 GFLOP/s; the CPU software baseline and the (not-built)
@@ -204,6 +191,17 @@ and motion magnitudes that dominate the benchmark. (Round-toward-zero adds a
 small one-sided bias on long dot products; switching the accumulate/drain to
 round-to-nearest-even is the documented precision follow-up.)
 
+A note on scope: this is a deliberate co-design cut. The accelerator targets
+\emph{only} RAFT's dominant convolution layer -- the hot kernel identified in
+\S1 -- and is benchmarked on exactly that layer (\S8). The bf16 error above is
+characterized on the same GEMM/convolution reduction the hardware actually
+runs, so it bounds the per-layer arithmetic error that would feed RAFT, rather
+than a synthetic abstraction. I have not measured an end-to-end KITTI/Sintel
+EPE delta against the full network (it would require running quantized
+inference through all layers and the recurrent refinement); the claim here is
+the narrower, directly-applicable one: bf16 on the accelerated layer stays well
+inside the error budget that the published end-to-end metrics tolerate.
+
 % =====================================================================
 \section{Dataflow and architecture}
 % =====================================================================
@@ -235,22 +233,34 @@ and one fp32 add per cycle (\texttt{pe\_pipelined.sv}, \texttt{mul\_bf16\_p2},
 results reduce down each column into 16 fp32 accumulators
 (\texttt{result\_buf}). A LOAD/COMPUTE/DRAIN FSM (\texttt{compute\_core\_pipelined.sv})
 sequences weight load, activation streaming with the pipeline skew
-(\texttt{MAC\_LATENCY}), and result drain; \texttt{weight\_store} and
-\texttt{load\_seq} stage the weight slab, and two synchronous FIFOs buffer the
-AXI-Stream ingress/egress. Weight-stationary fits convolution because the same
-filter weights apply across many output pixels -- though, as Sec.~2 notes, the
-\emph{current} tile schedule does not exploit that cross-pixel reuse.
+(\texttt{MAC\_LATENCY}), and result drain.
 
-The architectural weakness is here: the tile schedule reloads the full weight
-slab for every K-tile, so the weight-load cycles scale with the pixel count
-rather than amortizing across it, and weight streaming becomes the runtime
-bottleneck. I have two RTL changes would help close the gap. First, enlarging the
-\texttt{weight\_store} so more of the filter bank stays resident reduces how
-often the slab is reloaded. Second streaming a block of
-$B$ pixel-columns through each resident weight set amortizes one weight load
-over $B$ pixels, raising effective AI by roughly the block factor. I prototyped
-the streaming path but could not get it through PnR in the time available
-(Sec.~9), so the shipped design keeps the simpler per-pixel schedule.
+\textbf{Memory hierarchy.} The on-chip storage is deliberately small. The
+\texttt{weight\_store} holds exactly \emph{one} tile -- $M\times N=256$ bf16
+weights (512\,B), flat row-major -- filled by 16 AXIS beats and read
+combinationally by \texttt{load\_seq}. The ingress FIFO is 16 deep
+(\texttt{INGRESS\_DEPTH}, 257-bit \{\texttt{tlast},\texttt{tdata}\} words), the
+egress FIFO is $N=16$ deep, and the egress \texttt{skid\_buffer} is a 2-slot
+register slice. \texttt{result\_buf} is the only fp32 state: $N=16$ accumulators.
+The \texttt{weight\_store} was added in the M2$\rightarrow$M3 step so the host
+can load a weight tile once and run \emph{many} activation tiles against it
+(verified by \texttt{test\_weight\_reuse}); that decision was made early and is
+still the right primitive for weight-stationary inference. The limitation is
+that it is sized for a single $16\times16$ tile, while RAFT's reduction is
+$K=576\gg M=16$: the convolution schedule must therefore reload the slab on
+every one of the 36 K-tiles, so the cache delivers reuse across activation
+tiles (its design intent) but \emph{not} across the K-dimension of a real
+convolution -- which is where the cross-pixel reuse benefit would have come
+from. The intended benefit and the realized benefit diverge for this reason.
+
+The architectural fix lives here. I see two RTL changes that would close most
+of the gap. First, enlarging the \texttt{weight\_store} so more of the filter
+bank (multiple K-tiles) stays resident reduces how often the slab is reloaded.
+Second -- the larger win -- streaming a block of $B$ pixel-columns through each
+resident weight set amortizes one weight load over $B$ pixels, raising
+effective AI by roughly the block factor. I prototyped the streaming path but
+could not get it through PnR in the time available (Sec.~9), so the shipped
+design keeps the simpler per-pixel schedule.
 
 \begin{figure}[t]
 \centering
@@ -273,11 +283,21 @@ The data plane is \textbf{AXI4-Stream} (256-bit \texttt{tdata}) and the control
 plane is \textbf{AXI4-Lite} (host writes mode/start, polls status). AXI4-Stream
 was chosen in M1 (\texttt{project/m1/interface\_selection.md}) for high-throughput
 bulk tensor streaming. At 100\,MHz the stream delivers 3.2\,GB/s of pin
-bandwidth. The design is \textbf{interface/bandwidth bound} at the current
-operating point: at AI 0.92 FLOP/byte the 3.2\,GB/s roof caps performance near
-2.9 GFLOP/s, and the reload-stalled schedule delivers even less (0.115
-GFLOP/s, see Sec.~8). The array's 51.2 GFLOP/s compute capability is therefore
-not the limiter -- data movement is.
+bandwidth.
+
+It is worth separating two limits that are easy to conflate.
+\emph{Interface (pin) bound} means the design is moving data as fast as the
+256-bit AXIS port allows -- i.e.\ sitting \emph{on} the 3.2\,GB/s roof; at the
+operating AI of 0.92 FLOP/byte that roof would cap performance near
+2.9\,GFLOP/s. \emph{Schedule bound} means the design sits \emph{below} even
+that bandwidth roof because its tile schedule inserts stalls -- per-K-tile
+weight reloads and the unamortized systolic pipeline-fill quantified in
+\S8 -- so the pins are not actually kept busy. The measured 0.115\,GFLOP/s is
+far below both the 51.2\,GFLOP/s compute roof and the 2.9\,GFLOP/s pin-limited
+point, so the binding constraint is the \textbf{schedule}, not the interface:
+the AXIS port and the 256-MAC array both have headroom that the reload-stalled
+schedule never uses. Fixing the schedule (Sec.~4/9) -- not widening the
+interface or growing the array -- is what moves the operating point.
 
 % =====================================================================
 \section{Verification}
@@ -321,11 +341,24 @@ single-tile GEMM correctness (bf16 multiply / fp32 accumulate / bf16 round),
 weight-cache reuse, and multi-tile convolution accumulation.
 Figure~\ref{fig:waveform} shows a representative co-simulation waveform.
 
+This harness extends the earlier milestones rather than replacing them. The M2
+testbenches (\texttt{project/m2/tb/}) verified the datapath blocks in isolation
+-- \texttt{tb\_mul\_bf16.py}, \texttt{tb\_acc\_fp32.py},
+\texttt{tb\_compute\_core.py}, the \texttt{tb\_quant\_error.py} precision sweep
+of \S3, and \texttt{tb\_interface.py} for the AXI4-Lite registers. M3 added the
+bus-integrated top-level harness (\texttt{project/m3/tb/tb\_top.py}), driving
+the wired-up accelerator through its AXI pins for the first time. The M4
+\texttt{tb/tb\_top.py} used here is the direct descendant of that M3 harness
+(same pins-only methodology and reference-model checks), extended with the
+RAFT-dimensioned convolution and benchmark-measurement cases; the block-level
+guarantees from M2 are assumed and re-exercised end-to-end rather than
+re-asserted per gate.
+
 \begin{figure}[t]
 \centering
-\IfFileExists{../sim/cosim_waveform.png}{%
-  \includegraphics[width=\textwidth]{../sim/cosim_waveform.png}}{%
-  \fbox{\texttt{../sim/cosim\_waveform.png missing -- run sim/render\_waveform.py}}}
+\IfFileExists{figures/cosim_waveform.png}{%
+  \includegraphics[width=\textwidth]{figures/cosim_waveform.png}}{%
+  \fbox{\texttt{figures/cosim\_waveform.png missing -- run sim/render\_waveform.py}}}
 \caption{Co-simulation waveform of a GEMM tile through the AXI pins
 (\texttt{sim/render\_waveform.py}): the LOAD/COMPUTE handshake, activation
 streaming, and result drain.}
@@ -338,7 +371,14 @@ streaming, and result drain.}
 Synthesis and PnR used OpenLane~2 / sky130
 (\texttt{RUN\_2026-06-04\_17-46-11}); numbers below are the post-global-route
 signoff snapshot (step 42, typical corner). The run entered detailed routing
-but did not finish it (see Sec.~9); step-42 STA is the timing snapshot.
+but did not finish it (see Sec.~9); step-42 STA is the timing snapshot. On the
+evidence available, the design \emph{closes}: setup meets at the 100\,MHz target
+with +0.667\,ns margin and zero setup violations, and the only hold violations
+are on unconstrained chip-boundary IO paths (register-to-register hold is clean
+at +0.119\,ns) -- exactly the paths a detailed-route hold-fix pass and real IO
+timing constraints would resolve. The post-global-route estimate is the most
+advanced signoff this run produced; the core-logic timing it reports is the
+defensible basis for the 100\,MHz claim.
 
 \begin{table}[h]
 \centering
@@ -450,7 +490,9 @@ operating point up the bandwidth roof (still memory-bound, but far faster). I
 implemented a register-based version (\texttt{act\_block[B][M]},
 \texttt{result\_buf[B][N]}, a \texttt{PIX\_BLOCK} parameter and runtime
 \texttt{cfg\_pix\_count}) keeping the \(B{=}1\) path bit-exact; co-simulation
-passed.
+passed. That RTL is preserved on the \texttt{streaming} branch of the
+repository (tip commit \texttt{57f7ecb}); it is not merged into the shipped
+design on \texttt{main}.
 
 \textbf{Why it was reverted.} The streaming netlist did not close timing, and 
 by the time this was discovered, only one PnR window remained.

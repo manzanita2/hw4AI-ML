@@ -8,8 +8,10 @@
 **The graded M4 package lives in [`project/m4/`](project/m4/) — start at
 [`project/m4/README.md`](project/m4/README.md).** It catalogs the final
 RTL, testbench, simulation outputs, and synthesis/PnR results, and is the
-basis for the final examination. The design justification report will be
-at [`project/m4/report/`](project/m4/report/).
+basis for the final examination. The design justification report lives at
+[`project/m4/report/`](project/m4/report/) — LaTeX source
+(`design_justification.tex` + `Makefile`) that builds the committed
+`design_justification.pdf`.
 
 ## Goal
 
